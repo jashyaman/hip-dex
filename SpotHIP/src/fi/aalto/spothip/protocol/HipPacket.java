@@ -116,6 +116,8 @@ public abstract class HipPacket {
         aesCmac.updateByte(packetType);
         aesCmac.updateShort((short)0);
         aesCmac.updateShort(controls);
+        aesCmac.updateBlock(senderHit);
+        aesCmac.updateBlock(receiverHit);
         for (int i=0; i<hipParameters.size(); i++) {
             HipParameter param = (HipParameter)hipParameters.elementAt(i);
             if (param.getType() >= HipParameter.HIP_MAC_3)
