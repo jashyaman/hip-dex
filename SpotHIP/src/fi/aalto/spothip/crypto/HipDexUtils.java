@@ -52,4 +52,21 @@ public class HipDexUtils {
         }
         return ret;
     }
+
+    public static int compareHits(byte[] hitA, byte[] hitB) {
+        if (hitA.length < hitB.length)
+            return -1;
+        if (hitA.length > hitB.length)
+            return 1;
+
+        for (int i=0; i<hitA.length; i++) {
+            if (hitA[i] == hitB[i])
+                continue;
+            if (hitA[i] < hitB[i])
+                return -1;
+            if (hitA[i] > hitB[i])
+                return 1;
+        }
+        return 0;
+    }
 }

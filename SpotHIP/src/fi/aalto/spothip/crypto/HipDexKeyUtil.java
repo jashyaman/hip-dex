@@ -71,13 +71,7 @@ public class HipDexKeyUtil {
         }
 
         // Check which HIT is greater
-        boolean iGreater = false;
-        for (int i=0; i<16; i++) {
-            if (hitI[i] > hitR[i]) {
-                iGreater = true;
-                break;
-            }
-        }
+        boolean iGreater = (HipDexUtils.compareHits(hitI, hitR) > 0);
 
         // Combine the hits to byte array, smaller first
         byte[] hitsCombined = new byte[32];
