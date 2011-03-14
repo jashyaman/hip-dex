@@ -209,6 +209,8 @@ public class HipDexConnection {
         if (currentState == STATE_I2_SENT) {
             // Check if our HIT or their HIT is larger, if their HIT is larger
             // then just drop the packet, otherwise process and proceed
+            if (HipDexUtils.compareHits(localHit, remoteHit) < 0)
+                return false;
         }
         // Validate the puzzle solution, extract keying material, generate R2
 
