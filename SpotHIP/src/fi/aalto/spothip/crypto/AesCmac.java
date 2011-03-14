@@ -103,6 +103,22 @@ public class AesCmac {
         updateBlock(new byte[] { b });
     }
 
+    public final void updateShort(short s) {
+        byte[] block = new byte[2];
+        block[0] = (byte) (s>>8);
+        block[1] = (byte) (s);
+        updateBlock(block);
+    }
+
+    public final void updateInt(int i) {
+        byte[] block = new byte[4];
+        block[0] = (byte) (i>>24);
+        block[1] = (byte) (i>>16);
+        block[2] = (byte) (i>>8);
+        block[3] = (byte) (i);
+        updateBlock(block);
+    }
+
     public final void updateBlock(byte[] data) {
         int currentOffset = 0;
         

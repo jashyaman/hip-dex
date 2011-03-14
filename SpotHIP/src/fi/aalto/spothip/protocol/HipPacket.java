@@ -23,6 +23,13 @@
 
 package fi.aalto.spothip.protocol;
 
+import fi.aalto.spothip.crypto.AesCmac;
+import fi.aalto.spothip.protocol.HipHipMac3;
+
+import com.sun.spot.security.*;
+import com.sun.spot.security.implementation.*;
+import com.sun.spotx.crypto.spec.SecretKeySpec;
+
 import java.util.Vector;
 
 public abstract class HipPacket {
@@ -36,6 +43,8 @@ public abstract class HipPacket {
     public static final byte TYPE_CLOSE_ACK = 0x13;
 
     public static final byte IPPROTO_NONE = 59;
+
+    private static final int HIP_HEADER_LENGTH = 40;
 
     private byte nextHeader;
     private byte packetType;
@@ -77,6 +86,46 @@ public abstract class HipPacket {
         hipParameters.addElement(parameter);
     }
 
+    public void recalculateCmac(byte[] cmacKey) throws InvalidKeyException {
+        HipHipMac3 hipMac = (HipHipMac3)getParameter(HipParameter.HIP_MAC_3);
+        if (hipMac == null) return;
+
+        int parametersLength = 0;
+        for (int i=0; i<hipParameters.size(); i++) {
+            HipParameter param = (HipParameter)hipParameters.elementAt(i);
+            if (param.getType() >= HipParameter.HIP_MAC_3)
+                continue;
+
+            // RFC5201-bis Section 5.2.1. TLV Format
+            int Length = param.getContentLength();
+            parametersLength += 11 + Length - (Length + 3) % 8;
+        }
+        if (parametersLength > 2008) {
+            // TODO: Too large parameters length, should fail
+        }
+
+        AesCmac aesCmac = null;
+         try {
+            SecretKeySpec keySpec = new SecretKeySpec(cmacKey, 0, cmacKey.length, "AES");
+            
+            aesCmac = new AesCmac();
+            aesCmac.init(keySpec);
+        } catch (NoSuchAlgorithmException nsae) {}
+        aesCmac.updateByte(nextHeader);
+        aesCmac.updateByte((byte) ((HIP_HEADER_LENGTH+parametersLength-8)/8));
+        aesCmac.updateByte(packetType);
+        aesCmac.updateShort((short)0);
+        aesCmac.updateShort(controls);
+        for (int i=0; i<hipParameters.size(); i++) {
+            HipParameter param = (HipParameter)hipParameters.elementAt(i);
+            if (param.getType() >= HipParameter.HIP_MAC_3)
+                continue;
+            aesCmac.updateBlock(param.getBytes());
+        }
+        byte[] cmac = aesCmac.doFinal();
+        hipMac.setCmac(cmac);
+   }
+
     public HipParameter getParameter(short type) {
         for (int i=0; i<hipParameters.size(); i++) {
             HipParameter param = (HipParameter)hipParameters.elementAt(i);
@@ -110,7 +159,7 @@ public abstract class HipPacket {
             // TODO: Too large parameters length, should fail
         }
 
-        byte[] ret = new byte[40 + parametersLength];
+        byte[] ret = new byte[HIP_HEADER_LENGTH + parametersLength];
         ret[0] = nextHeader;
         ret[1] = (byte) ((ret.length-8)/8);
         ret[2] = (byte) (packetType&0x7f);

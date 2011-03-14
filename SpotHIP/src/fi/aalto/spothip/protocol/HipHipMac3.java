@@ -26,6 +26,11 @@ package fi.aalto.spothip.protocol;
 public class HipHipMac3 extends HipParameter {
     private byte[] cmac = new byte[0];
 
+    public void setCmac(byte[] newCmac) {
+        cmac = new byte[newCmac.length];
+        System.arraycopy(newCmac, 0, cmac, 0, newCmac.length);
+    }
+
     public short getType() {
         return HipParameter.HIP_MAC_3;
     }
