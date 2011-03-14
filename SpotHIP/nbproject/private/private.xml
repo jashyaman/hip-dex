@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/1"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/1">
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/crypto/AesCmac.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/crypto/HipDexUtils.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/StartApplication.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/crypto/HipDexKeyUtil.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/crypto/HipDexPuzzleUtil.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipPacket.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipParameter.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipDhGroupList.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipR1Counter.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipPuzzle.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipHipCipher.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipHostId.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipHitSuiteList.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipEchoRequestUnsigned.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipSolution.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipEncryptedKey.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipHipMac3.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipEchoResponseUnsigned.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipEncrypted.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipPacketI1.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipPacketR1.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipPacketI2.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/protocol/HipPacketR2.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/HipDexConnection.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/HipDexMain.java</file>
+        <file>file:/C:/Users/jvahaher/Desktop/HIPTest/src/fi/aalto/spothip/IHipDexConnectionDelegate.java</file>
+    </open-files>
+</project-private>
