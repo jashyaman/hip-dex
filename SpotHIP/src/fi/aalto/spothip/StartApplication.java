@@ -26,9 +26,13 @@ package fi.aalto.spothip;
 import fi.aalto.spothip.crypto.HipDexPuzzleUtil;
 import com.sun.spot.peripheral.Spot;
 import com.sun.spot.util.*;
+
 import com.sun.spotx.crypto.*;
 import com.sun.spotx.crypto.spec.SecretKeySpec;
+import com.sun.spotx.crypto.implementation.ECDHKeyAgreement;
 import com.sun.spot.security.*;
+import com.sun.spot.security.implementation.*;
+import com.sun.spot.security.implementation.ecc.ECCurve;
 
 import java.io.*;
 import javax.microedition.io.*;
@@ -54,26 +58,9 @@ public class StartApplication extends MIDlet {
                 Runtime.getRuntime().freeMemory() + "/" +
                 Runtime.getRuntime().totalMemory());
         
-        IEEEAddress remoteAddress = new IEEEAddress(Spot.getInstance().getRadioPolicyManager().getIEEEAddress());
-        byte[] hitI = new byte[16];
-        byte[] hitR = new byte[16];
+        puzzleTest();
+        ecdhTest(ECCurve.SECP160R1);
 
-        // Responder does this when sending R1
-        HipDexPuzzleUtil rPuzzle = new HipDexPuzzleUtil(6);
-        byte[] I = rPuzzle.calculateI(hitI, hitR, remoteAddress);
-
-        // Initiator does this when sending I2
-        long startTime = System.currentTimeMillis();
-        byte[] solution = HipDexPuzzleUtil.solvePuzzle(I, hitI, hitR, rPuzzle.getComplexity());
-        long endTime = System.currentTimeMillis();
-        System.out.println("Solved puzzle in " + (endTime-startTime) + " milliseconds");
-
-        // Responder does this when received I2
-        startTime = System.currentTimeMillis();
-        boolean verified = rPuzzle.verifyPuzzle(I, solution, hitI, hitR, remoteAddress);
-        endTime = System.currentTimeMillis();
-        System.out.println("Verified puzzle as " + verified + " in " + (endTime-startTime) + " milliseconds");
- 
         System.out.println("Memory available at end: " +
                 Runtime.getRuntime().freeMemory() + "/" +
                 Runtime.getRuntime().totalMemory());
@@ -93,5 +80,85 @@ public class StartApplication extends MIDlet {
             System.out.print(Integer.toHexString(data[i]&0xff));
         }
         System.out.println();
+    }
+
+
+    private void puzzleTest() {
+        IEEEAddress remoteAddress = new IEEEAddress(Spot.getInstance().getRadioPolicyManager().getIEEEAddress());
+        byte[] hitI = new byte[16];
+        byte[] hitR = new byte[16];
+
+        // Responder does this when sending R1
+        HipDexPuzzleUtil rPuzzle = new HipDexPuzzleUtil(6);
+        byte[] I = rPuzzle.calculateI(hitI, hitR, remoteAddress);
+
+        // Initiator does this when sending I2
+        long startTime = System.currentTimeMillis();
+        byte[] solution = HipDexPuzzleUtil.solvePuzzle(I, hitI, hitR, rPuzzle.getComplexity());
+        long endTime = System.currentTimeMillis();
+        System.out.println("Solved puzzle in " + (endTime-startTime) + " milliseconds");
+
+        // Responder does this when received I2
+        startTime = System.currentTimeMillis();
+        boolean verified = rPuzzle.verifyPuzzle(I, solution, hitI, hitR, remoteAddress);
+        endTime = System.currentTimeMillis();
+        System.out.println("Verified puzzle as " + verified + " in " + (endTime-startTime) + " milliseconds");
+   }
+
+    private void ecdhTest(int curveType) {
+        int keySizeBytes = ECCurve.getInstance(curveType).getField().getFFA().getByteSize();
+
+        // Create key agreements for both Alice and Bob
+        ECDHKeyAgreement keyAgreementAlice = new ECDHKeyAgreement();
+        ECDHKeyAgreement keyAgreementBob = new ECDHKeyAgreement();
+
+        // Create byte arrays for public keys of Alice and bob
+        byte[] publicAlice = new byte[1+2*keySizeBytes];
+        byte[] publicBob = new byte[1+2*keySizeBytes];
+        int publicAliceLength=0, publicBobLength=0;
+
+        try {
+            // Create objects containing the private and public keys of Alice and Bob
+            ECPrivateKeyImpl privateKeyAlice = new ECPrivateKeyImpl(curveType);
+            ECPublicKeyImpl publicKeyAlice = new ECPublicKeyImpl(curveType);
+            ECPrivateKeyImpl privateKeyBob = new ECPrivateKeyImpl(curveType);
+            ECPublicKeyImpl publicKeyBob = new ECPublicKeyImpl(curveType);
+
+            // Generate the actual private and public keys into the objects
+            System.out.println("Generating two ECDH key pairs");
+            long startTime = System.currentTimeMillis();
+            ECKeyImpl.genKeyPair(publicKeyAlice, privateKeyAlice);
+            ECKeyImpl.genKeyPair(publicKeyBob, privateKeyBob);
+            long endTime = System.currentTimeMillis();
+            System.out.println("Generating two key pairs took " + (endTime-startTime) + " milliseconds");
+
+            // Initialize the key agreements by using private keys
+            keyAgreementAlice.init(privateKeyAlice);
+            keyAgreementBob.init(privateKeyBob);
+
+            // Serialize the public keys of Alice and Bob into the byte arrays
+            publicAliceLength = publicKeyAlice.getW(publicAlice, 0);
+            publicBobLength = publicKeyBob.getW(publicBob, 0);
+        }
+        catch (InvalidKeyException ike) {}
+        catch (NoSuchAlgorithmException nsae) {}
+
+        // Create byte arrays for the ECDH secrets of Alice and Bob
+        byte[] secretAlice = new byte[keySizeBytes];
+        byte[] secretBob = new byte[keySizeBytes];
+        int secretAliceLength=0, secretBobLength=0;
+
+        try {
+            // Calculate the actual ECDH secrets by using the key agreements and public keys
+            System.out.println("Calculating two ECDH secrets");
+            long startTime = System.currentTimeMillis();
+            secretAliceLength = keyAgreementAlice.generateSecret(publicBob, 0, publicBobLength, secretAlice, 0);
+            secretBobLength = keyAgreementBob.generateSecret(publicAlice, 0, publicAliceLength, secretBob, 0);
+            long endTime = System.currentTimeMillis();
+            System.out.println("Calculating two secrets took " + (endTime-startTime) + " milliseconds");
+            printData("secretAlice", secretAlice);
+            printData("secretBob", secretBob);
+        }
+        catch (GeneralSecurityException gse) {}
     }
 }
