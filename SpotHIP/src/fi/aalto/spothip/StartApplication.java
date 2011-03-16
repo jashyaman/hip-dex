@@ -58,7 +58,7 @@ public class StartApplication extends MIDlet {
                 Runtime.getRuntime().freeMemory() + "/" +
                 Runtime.getRuntime().totalMemory());
         
-        puzzleTest();
+        puzzleTest(8);
         ecdhTest(ECCurve.SECP160R1);
 
         System.out.println("Memory available at end: " +
@@ -83,13 +83,13 @@ public class StartApplication extends MIDlet {
     }
 
 
-    private void puzzleTest() {
+    private void puzzleTest(int complexity) {
         IEEEAddress remoteAddress = new IEEEAddress(Spot.getInstance().getRadioPolicyManager().getIEEEAddress());
         byte[] hitI = new byte[16];
         byte[] hitR = new byte[16];
 
         // Responder does this when sending R1
-        HipDexPuzzleUtil rPuzzle = new HipDexPuzzleUtil(6);
+        HipDexPuzzleUtil rPuzzle = new HipDexPuzzleUtil(complexity);
         byte[] I = rPuzzle.calculateI(hitI, hitR, remoteAddress);
 
         // Initiator does this when sending I2
