@@ -34,6 +34,10 @@ import com.sun.spot.security.*;
 import com.sun.spot.security.implementation.*;
 import com.sun.spot.security.implementation.ecc.ECCurve;
 
+// These are only for the eccBugTest
+import com.sun.spot.security.implementation.ecc.FFA;
+import com.sun.spot.security.implementation.ecc.NIST160PrimeField;
+
 import java.io.*;
 import javax.microedition.io.*;
 import javax.microedition.midlet.MIDlet;
@@ -60,6 +64,7 @@ public class StartApplication extends MIDlet {
         
         puzzleTest(8);
         ecdhTest(ECCurve.SECP160R1);
+        eccBugTest();
 
         System.out.println("Memory available at end: " +
                 Runtime.getRuntime().freeMemory() + "/" +
@@ -160,5 +165,19 @@ public class StartApplication extends MIDlet {
             printData("secretBob", secretBob);
         }
         catch (GeneralSecurityException gse) {}
+    }
+
+    private void eccBugTest() {
+        FFA ffa = new FFA(160);
+        NIST160PrimeField pf = new NIST160PrimeField(ffa);
+
+        // Construct a as something a little bit larger than P, for example P+1
+        int[] a = new int[] { 0x00000000, 0x0ffffff8, 0x0fffffff, 0x0fffffff, 0x0fffffff, 0x000fffff };
+        int[] b = ffa.from("1");
+        int[] r = ffa.acquireVar();
+
+        // Multiply a and b
+        pf.multiply(r, a, b);
+        System.out.println("Reduction was successful: " + (r[5] < 0x000fffff));
     }
 }
