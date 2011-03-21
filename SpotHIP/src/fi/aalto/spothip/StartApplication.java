@@ -32,7 +32,6 @@ import com.sun.spotx.crypto.spec.SecretKeySpec;
 import com.sun.spotx.crypto.implementation.ECDHKeyAgreement;
 import com.sun.spot.security.*;
 import com.sun.spot.security.implementation.*;
-import com.sun.spot.security.implementation.ecc.ECCurve;
 
 // These are only for the eccBugTest
 import com.sun.spot.security.implementation.ecc.FFA;
@@ -63,7 +62,9 @@ public class StartApplication extends MIDlet {
                 Runtime.getRuntime().totalMemory());
         
         puzzleTest(8);
-        ecdhTest(ECCurve.SECP160R1);
+        ecdhTest(ECKeyImpl.SECP160R1);
+        ecdhTest(ECKeyImpl.SECP192R1);
+        ecdhTest(ECKeyImpl.SECP224R1);
         eccBugTest();
 
         System.out.println("Memory available at end: " +
@@ -111,23 +112,26 @@ public class StartApplication extends MIDlet {
    }
 
     private void ecdhTest(int curveType) {
-        int keySizeBytes = ECCurve.getInstance(curveType).getField().getFFA().getByteSize();
-
         // Create key agreements for both Alice and Bob
         ECDHKeyAgreement keyAgreementAlice = new ECDHKeyAgreement();
         ECDHKeyAgreement keyAgreementBob = new ECDHKeyAgreement();
 
         // Create byte arrays for public keys of Alice and bob
-        byte[] publicAlice = new byte[1+2*keySizeBytes];
-        byte[] publicBob = new byte[1+2*keySizeBytes];
+        byte[] publicAlice = new byte[0];
+        byte[] publicBob = new byte[0];
         int publicAliceLength=0, publicBobLength=0;
 
+        int keySizeBytes=0;
         try {
             // Create objects containing the private and public keys of Alice and Bob
             ECPrivateKeyImpl privateKeyAlice = new ECPrivateKeyImpl(curveType);
             ECPublicKeyImpl publicKeyAlice = new ECPublicKeyImpl(curveType);
             ECPrivateKeyImpl privateKeyBob = new ECPrivateKeyImpl(curveType);
             ECPublicKeyImpl publicKeyBob = new ECPublicKeyImpl(curveType);
+
+            keySizeBytes = privateKeyAlice.getECCurve().getField().getFFA().getByteSize();
+            publicAlice = new byte[1+2*keySizeBytes];
+            publicBob = new byte[1+2*keySizeBytes];
 
             // Generate the actual private and public keys into the objects
             System.out.println("Generating two ECDH key pairs");
