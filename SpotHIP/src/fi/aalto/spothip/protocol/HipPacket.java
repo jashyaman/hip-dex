@@ -192,4 +192,8 @@ public abstract class HipPacket {
         ret[5] = (byte) (checksum);
         return ret;
     }
+
+    public static HipPacket parse(byte[] data, int offset, int length) {
+        return null;
+    }
 }

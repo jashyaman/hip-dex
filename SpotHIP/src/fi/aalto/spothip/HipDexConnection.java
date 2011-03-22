@@ -43,15 +43,12 @@ public class HipDexConnection {
 
     private int currentState;
     private HipDexPuzzleUtil puzzleUtil;
-    
-    private DatagramConnection connection;
     private IHipDexConnectionDelegate delegate;
 
     private IEEEAddress localAddress;
     private byte[] localHit;
     
     private IEEEAddress remoteAddress;
-    private byte remotePort;
     private byte[] remoteHit;
 
     private HipDhGroupList dhGroupList = new HipDhGroupList(HipDhGroupList.DH_GROUP_ECP256);
@@ -67,6 +64,13 @@ public class HipDexConnection {
 
         localHit = new byte[ourHit.length];
         System.arraycopy(ourHit, 0, localHit, 0, ourHit.length);
+    }
+
+    public void retransmitLastPacket() {
+        if (currentState != STATE_I1_SENT && currentState != STATE_I2_SENT)
+            return;
+
+        System.out.println("Retransmitting packet");
     }
 
     private void changeCurrentState(int newState) {
@@ -143,26 +147,17 @@ public class HipDexConnection {
     }
 
     // Host can be null in case of a broadcast
-    public void connectToHost(IEEEAddress host, byte port, byte[] theirHit) throws IOException {
+    public void connectToHost(IEEEAddress host, byte[] theirHit) throws IOException {
         if (currentState == STATE_UNASSOCIATED) {
             remoteAddress = host;
-            remotePort = port;
             remoteHit = new byte[theirHit.length];
             System.arraycopy(theirHit, 0, remoteHit, 0, theirHit.length);
-
-            if (remoteAddress != null) {
-                connection = (DatagramConnection) Connector.open("radiogram://" + host.asDottedHex() + ":" + port);
-            } else {
-                connection = (DatagramConnection) Connector.open("radiogram://broadcast:" + port);
-            }
 
             // Send the I1 packet
             HipPacketI1 i1Packet = new HipPacketI1(dhGroupList);
             i1Packet.setSenderHit(localHit);
             i1Packet.setReceiverHit(remoteHit);
-            byte[] packetBytes = (new HipPacketI1(dhGroupList)).getBytes();
-            Datagram datagram = connection.newDatagram(packetBytes, packetBytes.length);
-            connection.send(datagram);
+            delegate.sendPacket(i1Packet, remoteAddress);
 
             changeCurrentState(STATE_I1_SENT);
         } else {
@@ -178,9 +173,7 @@ public class HipDexConnection {
         HipPacketR1 r1Packet = new HipPacketR1(puzzle, new HipHostId(), dhGroupList);
         r1Packet.setSenderHit(localHit);
         r1Packet.setReceiverHit(packet.getSenderHit());
-        byte[] packetBytes = r1Packet.getBytes();
-        Datagram datagram = connection.newDatagram(packetBytes, packetBytes.length);
-        connection.send(datagram);
+        delegate.sendPacket(r1Packet, sender);
         return true;
     }
 
@@ -199,9 +192,7 @@ public class HipDexConnection {
         HipPacketI2 i2Packet = new HipPacketI2(solution);
         i2Packet.setSenderHit(localHit);
         i2Packet.setReceiverHit(remoteHit);
-        byte[] packetBytes = i2Packet.getBytes();
-        Datagram datagram = connection.newDatagram(packetBytes, packetBytes.length);
-        connection.send(datagram);
+        delegate.sendPacket(i2Packet, remoteAddress);
         return true;
     }
     
