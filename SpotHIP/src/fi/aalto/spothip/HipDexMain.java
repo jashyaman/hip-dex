@@ -27,6 +27,9 @@ import fi.aalto.spothip.crypto.HipDexPuzzleUtil;
 import fi.aalto.spothip.protocol.HipPacket;
 
 import com.sun.spot.util.IEEEAddress;
+
+import com.sun.spot.security.*;
+import com.sun.spot.security.implementation.*;
 import javax.microedition.io.*;
 import java.io.*;
 
@@ -43,13 +46,15 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
     private Timer puzzleRegenerationTimer = null;
     private Timer retransmissionTimer = null;
 
-    HipDexPuzzleUtil puzzleUtil = new HipDexPuzzleUtil();
+    private HipDexPuzzleUtil puzzleUtil = new HipDexPuzzleUtil();
+    private ECPrivateKeyImpl privateKey = null;
+    private ECPublicKeyImpl publicKey = null;
     private byte[] ourHit = new byte[16];
 
     private boolean listening;
-    DatagramConnection connection = null;
-    Datagram incomingDatagram = null;
-    Datagram outgoingDatagram = null;
+    private DatagramConnection connection = null;
+    private Datagram incomingDatagram = null;
+    private Datagram outgoingDatagram = null;
 
     private Hashtable connections = new Hashtable();
     private int connectionsRequiringRetransmission = 0;
@@ -57,7 +62,17 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
 
     public HipDexMain(boolean listen) {
         listening = listen;
-    }
+
+        try {
+            // Create objects containing the private and public keys of Alice and Bob
+            int curveType = ECKeyImpl.SECP160R1;
+            privateKey = new ECPrivateKeyImpl(curveType);
+            publicKey = new ECPublicKeyImpl(curveType);
+            ECKeyImpl.genKeyPair(publicKey, privateKey);
+        }
+        catch (InvalidKeyException ike) {}
+        catch (NoSuchAlgorithmException nsae) {}
+   }
 
     public synchronized void start() throws IOException {
         if (running)
@@ -74,10 +89,10 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         puzzleRegenerationTimer.scheduleAtFixedRate(new PuzzleRegenerationTimerTask(), PUZZLE_REGENERATION_TIME, PUZZLE_REGENERATION_TIME);
 
         // XXX: Remove this from here
-        HipDexConnection conn = new HipDexConnection(puzzleUtil, ourHit, this);
-        IEEEAddress dest = new IEEEAddress("0014.4F01.0000.71D7");
-        connections.put(dest.asDottedHex(), conn);
-        conn.connectToHost(dest, ourHit);
+        HipDexConnection conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, ourHit, this);
+        byte[] dest = new byte[16];
+        connections.put(dest, conn);
+        conn.connectToHost(ourHit);
 
         running = true;
     }
@@ -95,7 +110,7 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
                 if (conn == null) {
                     if (!listening)
                         continue;
-                    conn = new HipDexConnection(puzzleUtil, ourHit, this);
+                    conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, ourHit, this);
                     connections.put(senderString, conn);
                 }
 
@@ -109,11 +124,12 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         }
     }
 
-    public void sendPacket(HipPacket packet, IEEEAddress destination) throws IOException {
+    public synchronized void sendPacket(HipPacket packet) throws IOException {
         System.out.println("Requesting to send packet");
 
         outgoingDatagram.reset();
         outgoingDatagram.write(packet.getBytes());
+        connection.send(outgoingDatagram);
     }
 
     public synchronized void stop() throws IOException, InterruptedException {

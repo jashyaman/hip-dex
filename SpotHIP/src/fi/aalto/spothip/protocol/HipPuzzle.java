@@ -29,8 +29,8 @@ public class HipPuzzle extends HipParameter {
     private short opaque;
     private byte[] randomI;
 
-    public HipPuzzle(byte complexity, byte[] puzzleI) {
-        k = complexity;
+    public HipPuzzle(int complexity, byte[] puzzleI) {
+        k = (byte)complexity;
         lifetime = 64;
         opaque = 0;
         randomI = new byte[puzzleI.length];

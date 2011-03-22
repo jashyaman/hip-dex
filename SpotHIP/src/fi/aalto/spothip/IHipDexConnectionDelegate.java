@@ -28,7 +28,7 @@ import com.sun.spot.util.IEEEAddress;
 import java.io.IOException;
 
 public interface IHipDexConnectionDelegate {
-    public void sendPacket(HipPacket packet, IEEEAddress destination) throws IOException;
+    public void sendPacket(HipPacket packet) throws IOException;
     
     public void signalStartRetransmission();
     public void signalStopRetransmission();

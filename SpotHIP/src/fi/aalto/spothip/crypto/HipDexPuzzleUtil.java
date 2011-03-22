@@ -35,9 +35,7 @@ import com.sun.spotx.crypto.spec.SecretKeySpec;
 public class HipDexPuzzleUtil {
     private static final int RAND_LENGTH = 16; // Defined as CMAC-len
 
-    byte complexity;
-    IEEEAddress localAddress;
-
+    int complexity;
     int generationCounter = 0;
     SecretKeySpec[] randoms = new SecretKeySpec[3];
 
@@ -46,14 +44,13 @@ public class HipDexPuzzleUtil {
     }
     
     public HipDexPuzzleUtil(int puzzleComplexity) {
-        complexity = (byte)puzzleComplexity;
-        localAddress = new IEEEAddress(Spot.getInstance().getRadioPolicyManager().getIEEEAddress());
+        complexity = puzzleComplexity;
 
         // Generate the first random
         regenerateRandom();
     }
 
-    public byte getComplexity() {
+    public int getComplexity() {
         return complexity;
     }
 
@@ -77,7 +74,7 @@ public class HipDexPuzzleUtil {
         } catch (NoSuchAlgorithmException nsae) {}
     }
 
-    public byte[] calculateI(byte[] hitI, byte[] hitR, IEEEAddress remoteAddress) {
+    public byte[] calculateI(byte[] hitI, byte[] hitR, byte[] localAddress, byte[] remoteAddress) {
         AesCmac aesCmac = null;
         try {
             aesCmac = new AesCmac();
@@ -88,8 +85,8 @@ public class HipDexPuzzleUtil {
 
         aesCmac.updateBlock(hitI);
         aesCmac.updateBlock(hitR);
-        aesCmac.updateBlock(HipDexUtils.addressToBytes(remoteAddress));
-        aesCmac.updateBlock(HipDexUtils.addressToBytes(localAddress));
+        aesCmac.updateBlock(remoteAddress);
+        aesCmac.updateBlock(localAddress);
         return aesCmac.doFinal();
     }
 
@@ -127,8 +124,8 @@ public class HipDexPuzzleUtil {
         return solution;
     }
 
-    public boolean verifyPuzzle(byte[] theirI, byte[] theirSolution, byte[] hitI, byte[] hitR, IEEEAddress remoteAddress) {
-        byte[] ourI = calculateI(hitI, hitR, remoteAddress);
+    public boolean verifyPuzzle(byte[] theirI, byte[] theirSolution, byte[] hitI, byte[] hitR, byte[] localAddress, byte[] remoteAddress) {
+        byte[] ourI = calculateI(hitI, hitR, localAddress, remoteAddress);
         if (!Arrays.equals(ourI, theirI))
             return false;
 

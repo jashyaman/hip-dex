@@ -26,10 +26,9 @@ package fi.aalto.spothip;
 import fi.aalto.spothip.crypto.*;
 import fi.aalto.spothip.protocol.*;
 
-import com.sun.spot.peripheral.Spot;
+import com.sun.spot.security.implementation.*;
 import com.sun.spot.util.IEEEAddress;
 
-import javax.microedition.io.*;
 import java.io.IOException;
 
 public class HipDexConnection {
@@ -41,41 +40,37 @@ public class HipDexConnection {
     public static final int STATE_CLOSING       = 0x06;
     public static final int STATE_CLOSED        = 0x07;
 
+
+    private ECPrivateKeyImpl privateKey;
+    private ECPublicKeyImpl publicKey;
+
     private int currentState;
     private HipDexPuzzleUtil puzzleUtil;
     private IHipDexConnectionDelegate delegate;
     private HipPacket lastPacket;
 
-    private IEEEAddress localAddress;
     private byte[] localHit;
-    
-    private IEEEAddress remoteAddress;
     private byte[] remoteHit;
 
-    private HipDhGroupList dhGroupList = new HipDhGroupList(HipDhGroupList.DH_GROUP_ECP256);
+    private HipDhGroupList dhGroupList = new HipDhGroupList(HipDhGroupList.DH_GROUP_ECP160);
     private byte[] keyX;
     private byte[] keyY;
 
-    public HipDexConnection(HipDexPuzzleUtil puzzle, byte[] ourHit, IHipDexConnectionDelegate connectionDelegate) {
+    public HipDexConnection(ECPrivateKeyImpl privKey, ECPublicKeyImpl pubKey,
+            HipDexPuzzleUtil puzzle, byte[] ourHit, IHipDexConnectionDelegate connectionDelegate) {
+        privateKey = privKey;
+        publicKey = pubKey;
+
         currentState = STATE_UNASSOCIATED;
         puzzleUtil = puzzle;
-
-        localAddress = new IEEEAddress(Spot.getInstance().getRadioPolicyManager().getIEEEAddress());
         delegate = connectionDelegate;
 
         localHit = new byte[ourHit.length];
         System.arraycopy(ourHit, 0, localHit, 0, ourHit.length);
     }
 
-    public void retransmitLastPacket() {
-        if (currentState != STATE_I1_SENT && currentState != STATE_I2_SENT)
-            return;
-        if (lastPacket == null)
-            return;
-        System.out.println("Retransmitting last packet");
-        try {
-            delegate.sendPacket(lastPacket, remoteAddress);
-        } catch (IOException ioe) {}
+    public int getCurrentState() {
+        return currentState;
     }
 
     private void changeCurrentState(int newState) {
@@ -94,9 +89,20 @@ public class HipDexConnection {
         currentState = newState;
     }
 
-    private void sendPacket(HipPacket packet, IEEEAddress destination) throws IOException {
+    private void sendPacket(HipPacket packet) throws IOException {
         lastPacket = packet;
-        delegate.sendPacket(packet, destination);
+        delegate.sendPacket(packet);
+    }
+
+    public void retransmitLastPacket() {
+        if (currentState != STATE_I1_SENT && currentState != STATE_I2_SENT)
+            return;
+        if (lastPacket == null)
+            return;
+        System.out.println("Retransmitting last packet");
+        try {
+            delegate.sendPacket(lastPacket);
+        } catch (IOException ioe) {}
     }
 
     public void handlePacket(HipPacket packet, IEEEAddress sender) throws IOException {
@@ -107,7 +113,6 @@ public class HipDexConnection {
             } else if(packet.getType() == HipPacket.TYPE_I2) {
                 // Validate I2 packet, send R2 packet
                 if (processPacket((HipPacketI2)packet, sender)) {
-                    remoteAddress = sender;
                     changeCurrentState(STATE_R2_SENT);
                 }
             }
@@ -115,7 +120,6 @@ public class HipDexConnection {
             if (packet.getType() == HipPacket.TYPE_R1) {
                 // Validate R1 packet, send I2 packet
                 if (processPacket((HipPacketR1)packet, sender)) {
-                    remoteAddress = sender;
                     changeCurrentState(STATE_I2_SENT);
                 }
             } else if(packet.getType() == HipPacket.TYPE_I2) {
@@ -157,17 +161,16 @@ public class HipDexConnection {
     }
 
     // Host can be null in case of a broadcast
-    public void connectToHost(IEEEAddress host, byte[] theirHit) throws IOException {
+    public void connectToHost(byte[] destinationHit) throws IOException {
         if (currentState == STATE_UNASSOCIATED) {
-            remoteAddress = host;
-            remoteHit = new byte[theirHit.length];
-            System.arraycopy(theirHit, 0, remoteHit, 0, theirHit.length);
+            remoteHit = new byte[destinationHit.length];
+            System.arraycopy(destinationHit, 0, remoteHit, 0, destinationHit.length);
 
             // Send the I1 packet
             HipPacketI1 i1Packet = new HipPacketI1(dhGroupList);
             i1Packet.setSenderHit(localHit);
             i1Packet.setReceiverHit(remoteHit);
-            sendPacket(i1Packet, remoteAddress);
+            sendPacket(i1Packet);
 
             changeCurrentState(STATE_I1_SENT);
         } else {
@@ -177,13 +180,13 @@ public class HipDexConnection {
 
     private boolean processPacket(HipPacketI1 packet, IEEEAddress sender) throws IOException {
         // No validation, just send R1
-        byte[] puzzleI = puzzleUtil.calculateI(packet.getSenderHit(), packet.getReceiverHit(), sender);
+        byte[] puzzleI = puzzleUtil.calculateI(packet.getSenderHit(), packet.getReceiverHit(), new byte[0], new byte[0]);
         HipPuzzle puzzle = new HipPuzzle(puzzleUtil.getComplexity(), puzzleI);
 
         HipPacketR1 r1Packet = new HipPacketR1(puzzle, new HipHostId(), dhGroupList);
         r1Packet.setSenderHit(localHit);
         r1Packet.setReceiverHit(packet.getSenderHit());
-        sendPacket(r1Packet, sender);
+        sendPacket(r1Packet);
         return true;
     }
 
@@ -202,7 +205,7 @@ public class HipDexConnection {
         HipPacketI2 i2Packet = new HipPacketI2(solution);
         i2Packet.setSenderHit(localHit);
         i2Packet.setReceiverHit(remoteHit);
-        sendPacket(i2Packet, remoteAddress);
+        sendPacket(i2Packet);
         return true;
     }
     

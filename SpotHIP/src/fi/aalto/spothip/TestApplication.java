@@ -98,7 +98,7 @@ public class TestApplication extends MIDlet {
 
         // Responder does this when sending R1
         HipDexPuzzleUtil rPuzzle = new HipDexPuzzleUtil(complexity);
-        byte[] I = rPuzzle.calculateI(hitI, hitR, remoteAddress);
+        byte[] I = rPuzzle.calculateI(hitI, hitR, new byte[0], new byte[0]);
 
         // Initiator does this when sending I2
         long startTime = System.currentTimeMillis();
@@ -108,7 +108,7 @@ public class TestApplication extends MIDlet {
 
         // Responder does this when received I2
         startTime = System.currentTimeMillis();
-        boolean verified = rPuzzle.verifyPuzzle(I, solution, hitI, hitR, remoteAddress);
+        boolean verified = rPuzzle.verifyPuzzle(I, solution, hitI, hitR, new byte[0], new byte[0]);
         endTime = System.currentTimeMillis();
         System.out.println("Verified puzzle as " + verified + " in " + (endTime-startTime) + " milliseconds");
    }
