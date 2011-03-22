@@ -41,6 +41,7 @@ public abstract class HipParameter {
     public abstract short getType();
     public abstract byte[] getContents();
     public abstract int getContentLength();
+    protected abstract boolean parseContent(byte[] content);
 
     public byte[] getPadding() {
         return null;
@@ -65,5 +66,37 @@ public abstract class HipParameter {
         System.arraycopy(contents, 0, data, 4, contents.length);
         System.arraycopy(padding, 0, data, 4+contents.length, padding.length);
         return data;
+    }
+
+    public static HipParameter parse(short type, byte[] contents) {
+        HipParameter param = null;
+        switch (type) {
+            case HipParameter.DH_GROUP_LIST:
+                param = new HipDhGroupList(contents);
+                break;
+            case HipParameter.ECHO_REQUEST_UNSIGNED:
+                break;
+            case HipParameter.ECHO_RESPONSE_UNSIGNED:
+                break;
+            case HipParameter.ENCRYPTED:
+                break;
+            case HipParameter.ENCRYPTED_KEY:
+                break;
+            case HipParameter.HIP_CIPHER:
+                break;
+            case HipParameter.HIP_MAC_3:
+                break;
+            case HipParameter.HIT_SUITE_LIST:
+                break;
+            case HipParameter.HOST_ID:
+                break;
+            case HipParameter.PUZZLE:
+                break;
+            case HipParameter.R1_COUNTER:
+                break;
+            case HipParameter.SOLUTION:
+                break;
+        }
+        return param;
     }
 }

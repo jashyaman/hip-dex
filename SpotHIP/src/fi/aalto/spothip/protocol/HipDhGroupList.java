@@ -31,6 +31,10 @@ public class HipDhGroupList extends HipParameter {
 
     private byte[] list;
 
+    protected HipDhGroupList() {
+        list = new byte[0];
+    }
+    
     public HipDhGroupList(byte dhGroup) {
         list = new byte[] { dhGroup };
     }
@@ -59,5 +63,10 @@ public class HipDhGroupList extends HipParameter {
 
     public byte[] getContents() {
         return list;
+    }
+
+    protected boolean parseContent(byte[] content) {
+        list = content;
+        return true;
     }
 }

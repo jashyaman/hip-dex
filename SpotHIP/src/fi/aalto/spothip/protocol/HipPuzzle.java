@@ -62,4 +62,8 @@ public class HipPuzzle extends HipParameter {
         System.arraycopy(randomI, 0, ret, 4, randomI.length);
         return ret;
     }
+
+    protected boolean parseContent(byte[] content) {
+        return true;
+    }
 }

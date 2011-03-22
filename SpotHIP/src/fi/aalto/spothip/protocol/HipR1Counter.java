@@ -46,4 +46,8 @@ public class HipR1Counter extends HipParameter {
         ret[11] = (byte) (counter&0xff);
         return ret;
     }
+
+    protected boolean parseContent(byte[] content) {
+        return true;
+    }
 }

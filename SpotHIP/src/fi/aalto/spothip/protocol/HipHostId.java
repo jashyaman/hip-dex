@@ -46,4 +46,8 @@ public class HipHostId extends HipParameter {
         System.arraycopy(di, 0, ret, 4+hi.length, di.length);
         return ret;
     }
+
+    protected boolean parseContent(byte[] content) {
+        return true;
+    }
 }

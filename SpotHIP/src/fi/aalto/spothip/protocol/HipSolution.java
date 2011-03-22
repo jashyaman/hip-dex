@@ -55,4 +55,8 @@ public class HipSolution extends HipParameter {
         System.arraycopy(solutionJ, 0, ret, 4+randomI.length, solutionJ.length);
         return ret;
     }
+
+    protected boolean parseContent(byte[] content) {
+        return true;
+    }
 }

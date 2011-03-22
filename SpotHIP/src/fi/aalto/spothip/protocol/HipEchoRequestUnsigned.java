@@ -24,15 +24,22 @@
 package fi.aalto.spothip.protocol;
 
 public class HipEchoRequestUnsigned extends HipParameter {
+    private byte[] opaque = new byte[0];
+
     public short getType() {
         return HipParameter.ECHO_REQUEST_UNSIGNED;
     }
 
     public int getContentLength() {
-        return 0;
+        return opaque.length;
     }
 
     public byte[] getContents() {
-        return new byte[0];
+        return opaque;
+    }
+
+    protected boolean parseContent(byte[] content) {
+        opaque = content;
+        return true;
     }
 }

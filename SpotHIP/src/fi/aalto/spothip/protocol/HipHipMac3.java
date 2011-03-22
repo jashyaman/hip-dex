@@ -42,4 +42,8 @@ public class HipHipMac3 extends HipParameter {
     public byte[] getContents() {
         return cmac;
     }
+
+    protected boolean parseContent(byte[] content) {
+        return true;
+    }
 }

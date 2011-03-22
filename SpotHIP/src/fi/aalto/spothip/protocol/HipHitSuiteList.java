@@ -37,4 +37,8 @@ public class HipHitSuiteList extends HipParameter {
     public byte[] getContents() {
         return new byte[] { ECDH_DEX };
     }
+
+    protected boolean parseContent(byte[] content) {
+        return true;
+    }
 }

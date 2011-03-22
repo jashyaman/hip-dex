@@ -32,7 +32,7 @@ import com.sun.spotx.crypto.spec.SecretKeySpec;
 
 import java.util.Vector;
 
-public abstract class HipPacket {
+public class HipPacket {
     public static final byte TYPE_I1 = 0x01;
     public static final byte TYPE_R1 = 0x02;
     public static final byte TYPE_I2 = 0x03;
@@ -55,6 +55,9 @@ public abstract class HipPacket {
     private byte[] receiverHit = new byte[16];
 
     private Vector hipParameters = new Vector();
+
+    private HipPacket() {
+    }
 
     protected HipPacket(byte type) {
         nextHeader = IPPROTO_NONE;
@@ -137,7 +140,7 @@ public abstract class HipPacket {
         return null;
     }
 
-    private short calculateChecksum(byte[] data) {
+    private static short calculateChecksum(byte[] data) {
         int checksum = 0;
         for (int i=0; i<data.length; i++) {
             checksum += (i%2==0) ? data[i]<<8 : data[i];
@@ -171,10 +174,10 @@ public abstract class HipPacket {
         ret[7] = (byte) (controls);
 
         int currentIdx = 8;
-        System.arraycopy(senderHit, 0, ret, currentIdx, senderHit.length);
-        currentIdx += senderHit.length;
-        System.arraycopy(receiverHit, 0, ret, currentIdx, receiverHit.length);
-        currentIdx += receiverHit.length;
+        System.arraycopy(senderHit, 0, ret, currentIdx, 16);
+        currentIdx += 16;
+        System.arraycopy(receiverHit, 0, ret, currentIdx, 16);
+        currentIdx += 16;
         for (int i=0; i<hipParameters.size(); i++) {
             HipParameter param = (HipParameter)hipParameters.elementAt(i);
             byte[] paramBytes = param.getBytes();
@@ -188,12 +191,61 @@ public abstract class HipPacket {
 
         // Calculate checksum of the HIP packet
         short checksum = calculateChecksum(ret);
-        ret[4] = (byte) (checksum>>8);
-        ret[5] = (byte) (checksum);
+        ret[4] = (byte)(checksum>>8);
+        ret[5] = (byte)(checksum);
         return ret;
     }
 
     public static HipPacket parse(byte[] data, int offset, int length) {
+        if (data == null)
+            return null;
+        if ((data.length - offset) < length)
+            return null;
+        if (length < 8)
+            return null;
+        int packetLength = 8+(data[offset+1]&0xff)*8;
+        if (packetLength < 40 || packetLength > length)
+            return null;
+
+        // Construct the actual packet data array
+        byte[] packetData = new byte[packetLength];
+        System.arraycopy(data, offset, packetData, 0, packetLength);
+
+        // Calculate checksum and confirm it is correct
+        short checksum = (short)(((packetData[4]&0xff)<<8)|(packetData[5]&0xff));
+        packetData[4] = 0; packetData[5] = 0;
+        if (checksum != calculateChecksum(packetData))
+            return null;
+
+        HipPacket packet = new HipPacket();
+        packet.nextHeader = packetData[0];
+        packet.packetType = (byte)(packetData[2]&0x7f);
+        packet.hipVersion = (byte)((packetData[3]>>4)&0x0f);
+        packet.controls = (short)(((packetData[6]&0xff)<<8)|(packetData[7]&0xff));
+        System.arraycopy(packetData, 8, packet.senderHit, 0, 16);
+        System.arraycopy(packetData, 24, packet.receiverHit, 0, 16);
+
+        int currentIdx = 40;
+        while (currentIdx < packetData.length) {
+            if (packetData.length-currentIdx < 4) {
+                // Not enough data for parameter header
+                return null;
+            }
+            int paramType = ((packetData[currentIdx]&0xff)<<8)|(packetData[currentIdx+1]&0xff);
+            int paramLength = ((packetData[currentIdx+2]&0xff)<<8)|(packetData[currentIdx+3]&0xff);
+            int totalLength = 11+paramLength-(paramLength+3)%8;
+            System.out.println("Parsed parameter type " + paramType + " content length " + paramLength);
+
+            if (packetData.length-currentIdx < totalLength) {
+                // Not enough data for parameter contents
+                return null;
+            }
+            byte[] content = new byte[paramLength];
+            System.arraycopy(packetData, currentIdx+4, content, 0, paramLength);
+            HipParameter param = HipParameter.parse((short)paramType, content);
+
+            currentIdx += totalLength;
+        }
         return null;
     }
 }

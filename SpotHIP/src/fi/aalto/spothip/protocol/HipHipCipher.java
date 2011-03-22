@@ -39,4 +39,8 @@ public class HipHipCipher extends HipParameter {
     public byte[] getContents() {
         return new byte[] { AES_128_CBC };
     }
+
+    protected boolean parseContent(byte[] content) {
+        return true;
+    }
 }

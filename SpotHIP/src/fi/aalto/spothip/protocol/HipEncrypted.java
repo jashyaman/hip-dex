@@ -24,7 +24,9 @@
 package fi.aalto.spothip.protocol;
 
 public class HipEncrypted extends HipParameter {
-    private byte[] iv = new byte[0];
+    private final static int IV_LENGTH = 16;
+
+    private byte[] iv = new byte[IV_LENGTH];
     private byte[] encryptedData = new byte[0];
 
     public short getType() {
@@ -40,5 +42,12 @@ public class HipEncrypted extends HipParameter {
         System.arraycopy(iv, 0, ret, 4, iv.length);
         System.arraycopy(encryptedData, 0, ret, 4+iv.length, encryptedData.length);
         return ret;
+    }
+
+    protected boolean parseContent(byte[] content) {
+        System.arraycopy(content, 4, iv, 0, IV_LENGTH);
+        encryptedData = new byte[content.length-4-IV_LENGTH];
+        System.arraycopy(content, 4+IV_LENGTH, encryptedData, 0, encryptedData.length);
+        return true;
     }
 }

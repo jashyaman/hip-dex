@@ -25,20 +25,23 @@ package fi.aalto.spothip.protocol;
 
 public class HipEncryptedKey extends HipParameter {
     private byte[] encryptedValue = new byte[0];
-    private byte[] nonce = new byte[0];
 
     public short getType() {
         return HipParameter.ENCRYPTED_KEY;
     }
 
     public int getContentLength() {
-        return encryptedValue.length+nonce.length;
+        return encryptedValue.length;
     }
 
     public byte[] getContents() {
         byte[] ret = new byte[getContentLength()];
         System.arraycopy(encryptedValue, 0, ret, 0, encryptedValue.length);
-        System.arraycopy(nonce, 0, ret, encryptedValue.length, nonce.length);
         return ret;
+    }
+
+    protected boolean parseContent(byte[] content) {
+        encryptedValue = content;
+        return true;
     }
 }
