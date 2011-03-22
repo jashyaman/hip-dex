@@ -44,6 +44,7 @@ public class HipDexConnection {
     private int currentState;
     private HipDexPuzzleUtil puzzleUtil;
     private IHipDexConnectionDelegate delegate;
+    private HipPacket lastPacket;
 
     private IEEEAddress localAddress;
     private byte[] localHit;
@@ -69,8 +70,12 @@ public class HipDexConnection {
     public void retransmitLastPacket() {
         if (currentState != STATE_I1_SENT && currentState != STATE_I2_SENT)
             return;
-
-        System.out.println("Retransmitting packet");
+        if (lastPacket == null)
+            return;
+        System.out.println("Retransmitting last packet");
+        try {
+            delegate.sendPacket(lastPacket, remoteAddress);
+        } catch (IOException ioe) {}
     }
 
     private void changeCurrentState(int newState) {
@@ -87,6 +92,11 @@ public class HipDexConnection {
             }
         }
         currentState = newState;
+    }
+
+    private void sendPacket(HipPacket packet, IEEEAddress destination) throws IOException {
+        lastPacket = packet;
+        delegate.sendPacket(packet, destination);
     }
 
     public void handlePacket(HipPacket packet, IEEEAddress sender) throws IOException {
@@ -157,7 +167,7 @@ public class HipDexConnection {
             HipPacketI1 i1Packet = new HipPacketI1(dhGroupList);
             i1Packet.setSenderHit(localHit);
             i1Packet.setReceiverHit(remoteHit);
-            delegate.sendPacket(i1Packet, remoteAddress);
+            sendPacket(i1Packet, remoteAddress);
 
             changeCurrentState(STATE_I1_SENT);
         } else {
@@ -173,7 +183,7 @@ public class HipDexConnection {
         HipPacketR1 r1Packet = new HipPacketR1(puzzle, new HipHostId(), dhGroupList);
         r1Packet.setSenderHit(localHit);
         r1Packet.setReceiverHit(packet.getSenderHit());
-        delegate.sendPacket(r1Packet, sender);
+        sendPacket(r1Packet, sender);
         return true;
     }
 
@@ -192,7 +202,7 @@ public class HipDexConnection {
         HipPacketI2 i2Packet = new HipPacketI2(solution);
         i2Packet.setSenderHit(localHit);
         i2Packet.setReceiverHit(remoteHit);
-        delegate.sendPacket(i2Packet, remoteAddress);
+        sendPacket(i2Packet, remoteAddress);
         return true;
     }
     

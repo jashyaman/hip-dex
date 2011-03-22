@@ -25,9 +25,10 @@ package fi.aalto.spothip;
 
 import fi.aalto.spothip.protocol.*;
 import com.sun.spot.util.IEEEAddress;
+import java.io.IOException;
 
 public interface IHipDexConnectionDelegate {
-    public void sendPacket(HipPacket packet, IEEEAddress destination);
+    public void sendPacket(HipPacket packet, IEEEAddress destination) throws IOException;
     
     public void signalStartRetransmission();
     public void signalStopRetransmission();

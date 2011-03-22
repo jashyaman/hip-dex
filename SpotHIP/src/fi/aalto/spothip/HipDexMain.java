@@ -47,8 +47,9 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
     private byte[] ourHit = new byte[16];
 
     private boolean listening;
-    DatagramConnection listeningConnection = null;
+    DatagramConnection connection = null;
     Datagram incomingDatagram = null;
+    Datagram outgoingDatagram = null;
 
     private Hashtable connections = new Hashtable();
     private int connectionsRequiringRetransmission = 0;
@@ -62,8 +63,9 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         if (running)
             return;
         
-        listeningConnection = (DatagramConnection) Connector.open("radiogram://:" + HIP_PORT);
-        incomingDatagram = listeningConnection.newDatagram(listeningConnection.getMaximumLength());
+        connection = (DatagramConnection) Connector.open("radiogram://:" + HIP_PORT);
+        incomingDatagram = connection.newDatagram(connection.getMaximumLength());
+        outgoingDatagram = connection.newDatagram(connection.getMaximumLength());
 
         mainThread = new Thread(this);
         mainThread.start();
@@ -84,7 +86,7 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         try {
             while (running) {
                 incomingDatagram.reset();
-                listeningConnection.receive(incomingDatagram);
+                connection.receive(incomingDatagram);
                 String senderString = incomingDatagram.getAddress();
                 System.out.println("Received packet from: " + senderString);
 
@@ -107,8 +109,11 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         }
     }
 
-    public void sendPacket(HipPacket packet, IEEEAddress destination) {
+    public void sendPacket(HipPacket packet, IEEEAddress destination) throws IOException {
         System.out.println("Requesting to send packet");
+
+        outgoingDatagram.reset();
+        outgoingDatagram.write(packet.getBytes());
     }
 
     public synchronized void stop() throws IOException, InterruptedException {
@@ -126,9 +131,10 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         }
 
         // Close connection and join main thread
-        listeningConnection.close();
-        listeningConnection = null;
+        connection.close();
+        connection = null;
         incomingDatagram = null;
+        outgoingDatagram = null;
 
         mainThread.join();
         mainThread = null;
