@@ -23,6 +23,7 @@
 
 package fi.aalto.spothip.crypto;
 
+import fi.aalto.spothip.HipDexUtils;
 import com.sun.spotx.crypto.spec.SecretKeySpec;
 
 public class HipDexKeyUtil {

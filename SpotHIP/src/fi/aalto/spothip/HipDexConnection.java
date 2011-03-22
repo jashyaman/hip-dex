@@ -57,7 +57,7 @@ public class HipDexConnection {
     private byte[] keyY;
 
     public HipDexConnection(ECPrivateKeyImpl privKey, ECPublicKeyImpl pubKey,
-            HipDexPuzzleUtil puzzle, byte[] ourHit, IHipDexConnectionDelegate connectionDelegate) {
+            HipDexPuzzleUtil puzzle, IHipDexConnectionDelegate connectionDelegate) {
         privateKey = privKey;
         publicKey = pubKey;
 
@@ -65,8 +65,7 @@ public class HipDexConnection {
         puzzleUtil = puzzle;
         delegate = connectionDelegate;
 
-        localHit = new byte[ourHit.length];
-        System.arraycopy(ourHit, 0, localHit, 0, ourHit.length);
+        localHit = HipDexUtils.publicKeyToHit(publicKey);
     }
 
     public int getCurrentState() {

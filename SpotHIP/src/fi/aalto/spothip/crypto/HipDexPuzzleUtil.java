@@ -23,6 +23,7 @@
 
 package fi.aalto.spothip.crypto;
 
+import fi.aalto.spothip.HipDexUtils;
 import com.sun.spot.peripheral.Spot;
 import com.sun.spot.util.IEEEAddress;
 import com.sun.squawk.util.Arrays;

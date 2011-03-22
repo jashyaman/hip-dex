@@ -21,9 +21,10 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
-package fi.aalto.spothip.crypto;
+package fi.aalto.spothip;
 
 import com.sun.spot.util.IEEEAddress;
+import com.sun.spot.security.implementation.ECPublicKeyImpl;
 
 public class HipDexUtils {
     public static byte[] LTrunc(byte[] input, int bits) {
@@ -51,6 +52,17 @@ public class HipDexUtils {
             longval >>= 8;
         }
         return ret;
+    }
+
+    public static byte[] publicKeyToHit(ECPublicKeyImpl publicKey) {
+        byte[] hit = new byte[16];
+        hit[0] = 0x20;
+        hit[1] = 0x01;
+        hit[2] = 0x00;
+        hit[3] = 0x15; // 5 = LTRUNC
+        byte[] ltrunc = LTrunc(publicKey.getEncoded(), 96);
+        System.arraycopy(ltrunc, 0, hit, 4, ltrunc.length);
+        return hit;
     }
 
     public static int compareHits(byte[] hitA, byte[] hitB) {

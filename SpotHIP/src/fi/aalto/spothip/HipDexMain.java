@@ -49,7 +49,6 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
     private HipDexPuzzleUtil puzzleUtil = new HipDexPuzzleUtil();
     private ECPrivateKeyImpl privateKey = null;
     private ECPublicKeyImpl publicKey = null;
-    private byte[] ourHit = new byte[16];
 
     private boolean listening;
     private DatagramConnection connection = null;
@@ -89,10 +88,10 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         puzzleRegenerationTimer.scheduleAtFixedRate(new PuzzleRegenerationTimerTask(), PUZZLE_REGENERATION_TIME, PUZZLE_REGENERATION_TIME);
 
         // XXX: Remove this from here
-        HipDexConnection conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, ourHit, this);
+        HipDexConnection conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, this);
         byte[] dest = new byte[16];
         connections.put(dest, conn);
-        conn.connectToHost(ourHit);
+        conn.connectToHost(dest);
 
         running = true;
     }
@@ -110,7 +109,7 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
                 if (conn == null) {
                     if (!listening)
                         continue;
-                    conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, ourHit, this);
+                    conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, this);
                     connections.put(senderString, conn);
                 }
 
