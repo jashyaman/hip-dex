@@ -29,6 +29,8 @@ public class HipSolution extends HipParameter {
     private byte[] randomI;
     private byte[] solutionJ;
 
+    protected HipSolution() {}
+
     public HipSolution(byte complexity, byte[] puzzleI, byte[] puzzleJ) {
         k = complexity;
         opaque = 0;

@@ -36,7 +36,7 @@ import java.io.*;
 
 import java.util.*;
 
-public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
+public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
     private static final int PUZZLE_REGENERATION_TIME = 120*1000;
     private static final int RETRANSMISSION_TIME = 500;
     private static final int HIP_PORT = 123;
@@ -50,6 +50,7 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
     private HipDexPuzzleUtil puzzleUtil = new HipDexPuzzleUtil();
     private ECPrivateKeyImpl privateKey = null;
     private ECPublicKeyImpl publicKey = null;
+    private String ourHitString = null;
 
     private boolean listening;
     private IEEEAddress localAddress = null;
@@ -62,7 +63,7 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
     private int connectionsRequiringRetransmission = 0;
 
 
-    public HipDexMain(boolean listen) {
+    public HipDexEngine(boolean listen) {
         listening = listen;
 
         try {
@@ -71,6 +72,7 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
             privateKey = new ECPrivateKeyImpl(curveType);
             publicKey = new ECPublicKeyImpl(curveType);
             ECKeyImpl.genKeyPair(publicKey, privateKey);
+            ourHitString = HipDexUtils.byteArrayToString(HipDexUtils.publicKeyToHit(publicKey));
         }
         catch (InvalidKeyException ike) { ike.printStackTrace(); }
         catch (NoSuchAlgorithmException nsae) { nsae.printStackTrace(); }
@@ -103,16 +105,25 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
                 String senderString = incomingDatagram.getAddress();
                 System.out.println("Received packet from: " + senderString);
 
+                // Parse the received data into a HipPacket
+                HipPacket packet = HipPacket.parse(incomingDatagram.getData(),
+                        incomingDatagram.getOffset(), incomingDatagram.getLength());
+                if (packet == null) {
+                    System.out.println("Parsing the packet failed");
+                    continue;
+                }
+                System.out.println("Received packet data: " + packet);
+                String senderHitString = HipDexUtils.byteArrayToString(packet.getSenderHit());
+
                 // Get the connection that should process the packet
-                HipDexConnection conn = (HipDexConnection)connections.get(senderString);
+                HipDexConnection conn = (HipDexConnection)connections.get(senderHitString);
                 if (conn == null) {
                     if (!listening)
                         continue;
                     conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, this);
-                    connections.put(senderString, conn);
+                    connections.put(senderHitString, conn);
                 }
 
-                HipPacket packet = HipPacket.parse(incomingDatagram.getData(), incomingDatagram.getOffset(), incomingDatagram.getLength());
                 IEEEAddress sender = new IEEEAddress(senderString);
                 conn.handlePacket(packet, sender);
             }
@@ -124,11 +135,7 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
 
     private void printData(String name, byte[] data) {
         System.out.print(name + ": ");
-        for (int i=0; i<data.length; i++) {
-            if (data[i]>=0 && data[i] < 16) System.out.print("0");
-            System.out.print(Integer.toHexString(data[i]&0xff));
-        }
-        System.out.println();
+        System.out.println(HipDexUtils.byteArrayToString(data));
     }
 
     public synchronized void sendPacket(HipPacket packet) throws IOException {
@@ -170,10 +177,12 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
     public synchronized void connectToHit(byte[] remoteHit) throws IOException {
         if (!running)
             throw new IOException("Instance of HipDex not running");
+        if (remoteHit.length != 16)
+            throw new IOException("Remote HIT length is not correct");
         
         System.out.println("Public key: " + publicKey);
         HipDexConnection conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, this);
-        connections.put(remoteHit, conn);
+        connections.put(HipDexUtils.byteArrayToString(remoteHit), conn);
         conn.connectToHost(remoteHit);
     }
 

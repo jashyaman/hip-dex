@@ -47,9 +47,9 @@ public class StartApplication extends MIDlet {
         remoteHit[2] = 0x00;
         remoteHit[3] = 0x15; // 5 = LTRUNC
         for (int i=4; i<remoteHit.length; i++) remoteHit[i] = (byte)(i-4);
-
-        HipDexMain main = new HipDexMain(false);
-        try { main.start(); main.connectToHit(remoteHit); }
+        
+        HipDexEngine client = new HipDexEngine(true);
+        try { client.start(); client.connectToHit(remoteHit); }
         catch (Exception e) { e.printStackTrace(); }
 
 

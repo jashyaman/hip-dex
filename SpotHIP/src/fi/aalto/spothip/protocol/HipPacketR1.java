@@ -24,6 +24,10 @@
 package fi.aalto.spothip.protocol;
 
 public class HipPacketR1 extends HipPacket {
+    protected HipPacketR1() {
+        super(HipPacket.TYPE_R1);
+    }
+
     public HipPacketR1(HipPuzzle puzzle, HipHostId hostId, HipDhGroupList dhGroupList) {
         super(HipPacket.TYPE_R1);
 

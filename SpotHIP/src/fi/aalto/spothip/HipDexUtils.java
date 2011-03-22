@@ -69,6 +69,18 @@ public class HipDexUtils {
         return hit;
     }
 
+    public static String byteArrayToString(byte[] data) {
+        if (data == null)
+            return null;
+
+        String ret = "";
+        for (int i=0; i<data.length; i++) {
+            if (data[i]>=0 && data[i] < 16) ret += "0";
+            ret += Integer.toHexString(data[i]&0xff);
+        }
+        return ret;
+    }
+
     public static int compareHits(byte[] hitA, byte[] hitB) {
         if (hitA.length < hitB.length)
             return -1;

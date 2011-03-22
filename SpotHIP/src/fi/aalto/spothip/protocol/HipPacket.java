@@ -24,15 +24,14 @@
 package fi.aalto.spothip.protocol;
 
 import fi.aalto.spothip.crypto.AesCmac;
-import fi.aalto.spothip.protocol.HipHipMac3;
+import fi.aalto.spothip.HipDexUtils;
 
 import com.sun.spot.security.*;
-import com.sun.spot.security.implementation.*;
 import com.sun.spotx.crypto.spec.SecretKeySpec;
 
 import java.util.Vector;
 
-public class HipPacket {
+public abstract class HipPacket {
     public static final byte TYPE_I1 = 0x01;
     public static final byte TYPE_R1 = 0x02;
     public static final byte TYPE_I2 = 0x03;
@@ -55,9 +54,6 @@ public class HipPacket {
     private byte[] receiverHit = new byte[16];
 
     private Vector hipParameters = new Vector();
-
-    private HipPacket() {
-    }
 
     protected HipPacket(byte type) {
         nextHeader = IPPROTO_NONE;
@@ -159,6 +155,7 @@ public class HipPacket {
             // RFC5201-bis Section 5.2.1. TLV Format
             int Length = param.getContentLength();
             parametersLength += 11 + Length - (Length + 3) % 8;
+            System.out.println("parameters length " + parametersLength);
         }
         if (parametersLength > 2008) {
             // TODO: Too large parameters length, should fail
@@ -181,6 +178,7 @@ public class HipPacket {
         for (int i=0; i<hipParameters.size(); i++) {
             HipParameter param = (HipParameter)hipParameters.elementAt(i);
             byte[] paramBytes = param.getBytes();
+            System.out.println("parameter bytes " + paramBytes.length);
 
             System.arraycopy(paramBytes, 0, ret, currentIdx, paramBytes.length);
             currentIdx += paramBytes.length;
@@ -216,10 +214,25 @@ public class HipPacket {
         packetData[4] = 0; packetData[5] = 0;
         if (checksum != calculateChecksum(packetData))
             return null;
+        System.out.println("Checksum is correct");
 
-        HipPacket packet = new HipPacket();
+        HipPacket packet = null;
+        byte packetType = (byte)(packetData[2]&0x7f);
+        switch (packetType) {
+            case HipPacket.TYPE_I1:
+                packet = new HipPacketI1();
+                break;
+            case HipPacket.TYPE_R1:
+                packet = new HipPacketR1();
+                break;
+            case HipPacket.TYPE_I2:
+                packet = new HipPacketI2();
+                break;
+            case HipPacket.TYPE_R2:
+                packet = new HipPacketR2();
+                break;
+        }
         packet.nextHeader = packetData[0];
-        packet.packetType = (byte)(packetData[2]&0x7f);
         packet.hipVersion = (byte)((packetData[3]>>4)&0x0f);
         packet.controls = (short)(((packetData[6]&0xff)<<8)|(packetData[7]&0xff));
         System.arraycopy(packetData, 8, packet.senderHit, 0, 16);
@@ -238,14 +251,32 @@ public class HipPacket {
 
             if (packetData.length-currentIdx < totalLength) {
                 // Not enough data for parameter contents
+                System.out.println("Not enough data for contents");
                 return null;
             }
             byte[] content = new byte[paramLength];
             System.arraycopy(packetData, currentIdx+4, content, 0, paramLength);
             HipParameter param = HipParameter.parse((short)paramType, content);
-
+            if (param == null) {
+                // Parsing parameter failed
+                System.out.println("Parsing parameter failed");
+                return null;
+            }
+            packet.addParameter(param);
             currentIdx += totalLength;
         }
-        return null;
+        return packet;
+    }
+
+    public String toString() {
+        String ret = "{";
+        ret += " nextHeader: " + (nextHeader&0xff);
+        ret += " packetType: " + (packetType&0xff);
+        ret += " hipVersion: " + (hipVersion&0xff);
+        ret += " controls: " + (controls&0xffff);
+        ret += " senderHIT: " + HipDexUtils.byteArrayToString(senderHit);
+        ret += " receiverHIT: " + HipDexUtils.byteArrayToString(receiverHit);
+        ret += " }";
+        return ret;
     }
 }

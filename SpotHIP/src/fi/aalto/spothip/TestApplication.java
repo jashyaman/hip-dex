@@ -24,7 +24,7 @@
 package fi.aalto.spothip;
 
 import fi.aalto.spothip.crypto.HipDexPuzzleUtil;
-import fi.aalto.spothip.HipDexMain;
+import fi.aalto.spothip.HipDexEngine;
 
 import com.sun.spot.peripheral.Spot;
 import com.sun.spot.util.*;

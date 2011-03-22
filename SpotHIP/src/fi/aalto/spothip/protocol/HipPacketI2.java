@@ -24,6 +24,10 @@
 package fi.aalto.spothip.protocol;
 
 public class HipPacketI2 extends HipPacket {
+    protected HipPacketI2() {
+        super(HipPacket.TYPE_I2);
+    }
+    
     public HipPacketI2(HipSolution solution) {
         super(HipPacket.TYPE_I2);
 

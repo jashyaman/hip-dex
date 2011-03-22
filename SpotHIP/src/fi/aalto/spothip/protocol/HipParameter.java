@@ -72,30 +72,45 @@ public abstract class HipParameter {
         HipParameter param = null;
         switch (type) {
             case HipParameter.DH_GROUP_LIST:
-                param = new HipDhGroupList(contents);
+                param = new HipDhGroupList();
                 break;
             case HipParameter.ECHO_REQUEST_UNSIGNED:
+                param = new HipEchoRequestUnsigned();
                 break;
             case HipParameter.ECHO_RESPONSE_UNSIGNED:
+                param = new HipEchoResponseUnsigned();
                 break;
             case HipParameter.ENCRYPTED:
+                param = new HipEncrypted();
                 break;
             case HipParameter.ENCRYPTED_KEY:
+                param = new HipEncryptedKey();
                 break;
             case HipParameter.HIP_CIPHER:
+                param = new HipHipCipher();
                 break;
             case HipParameter.HIP_MAC_3:
+                param = new HipHipMac3();
                 break;
             case HipParameter.HIT_SUITE_LIST:
+                param = new HipHitSuiteList();
                 break;
             case HipParameter.HOST_ID:
+                param = new HipHostId();
                 break;
             case HipParameter.PUZZLE:
+                param = new HipPuzzle();
                 break;
             case HipParameter.R1_COUNTER:
+                param = new HipR1Counter();
                 break;
             case HipParameter.SOLUTION:
+                param = new HipSolution();
                 break;
+        }
+        if (!param.parseContent(contents)) {
+            System.out.println("Parsing parameter failed");
+            return null;
         }
         return param;
     }
