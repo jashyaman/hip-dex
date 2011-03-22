@@ -26,6 +26,7 @@ package fi.aalto.spothip;
 import fi.aalto.spothip.crypto.HipDexPuzzleUtil;
 import fi.aalto.spothip.protocol.HipPacket;
 
+import com.sun.spot.peripheral.Spot;
 import com.sun.spot.util.IEEEAddress;
 
 import com.sun.spot.security.*;
@@ -51,7 +52,9 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
     private ECPublicKeyImpl publicKey = null;
 
     private boolean listening;
-    private DatagramConnection connection = null;
+    private IEEEAddress localAddress = null;
+    private DatagramConnection incomingConnection = null;
+    private DatagramConnection outgoingConnection = null;
     private Datagram incomingDatagram = null;
     private Datagram outgoingDatagram = null;
 
@@ -69,29 +72,25 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
             publicKey = new ECPublicKeyImpl(curveType);
             ECKeyImpl.genKeyPair(publicKey, privateKey);
         }
-        catch (InvalidKeyException ike) {}
-        catch (NoSuchAlgorithmException nsae) {}
+        catch (InvalidKeyException ike) { ike.printStackTrace(); }
+        catch (NoSuchAlgorithmException nsae) { nsae.printStackTrace(); }
    }
 
     public synchronized void start() throws IOException {
         if (running)
             return;
-        
-        connection = (DatagramConnection) Connector.open("radiogram://:" + HIP_PORT);
-        incomingDatagram = connection.newDatagram(connection.getMaximumLength());
-        outgoingDatagram = connection.newDatagram(connection.getMaximumLength());
+
+        localAddress = new IEEEAddress(Spot.getInstance().getRadioPolicyManager().getIEEEAddress());
+        incomingConnection = (DatagramConnection) Connector.open("radiogram://:" + HIP_PORT);
+        outgoingConnection = (DatagramConnection) Connector.open("radiogram://broadcast:" + HIP_PORT);
+        incomingDatagram = incomingConnection.newDatagram(incomingConnection.getMaximumLength());
+        outgoingDatagram = outgoingConnection.newDatagram(outgoingConnection.getMaximumLength());
 
         mainThread = new Thread(this);
         mainThread.start();
         
         puzzleRegenerationTimer = new Timer();
         puzzleRegenerationTimer.scheduleAtFixedRate(new PuzzleRegenerationTimerTask(), PUZZLE_REGENERATION_TIME, PUZZLE_REGENERATION_TIME);
-
-        // XXX: Remove this from here
-        HipDexConnection conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, this);
-        byte[] dest = new byte[16];
-        connections.put(dest, conn);
-        conn.connectToHost(dest);
 
         running = true;
     }
@@ -100,7 +99,7 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         try {
             while (running) {
                 incomingDatagram.reset();
-                connection.receive(incomingDatagram);
+                incomingConnection.receive(incomingDatagram);
                 String senderString = incomingDatagram.getAddress();
                 System.out.println("Received packet from: " + senderString);
 
@@ -123,12 +122,22 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         }
     }
 
+    private void printData(String name, byte[] data) {
+        System.out.print(name + ": ");
+        for (int i=0; i<data.length; i++) {
+            if (data[i]>=0 && data[i] < 16) System.out.print("0");
+            System.out.print(Integer.toHexString(data[i]&0xff));
+        }
+        System.out.println();
+    }
+
     public synchronized void sendPacket(HipPacket packet) throws IOException {
         System.out.println("Requesting to send packet");
+        printData("packet", packet.getBytes());
 
         outgoingDatagram.reset();
         outgoingDatagram.write(packet.getBytes());
-        connection.send(outgoingDatagram);
+        outgoingConnection.send(outgoingDatagram);
     }
 
     public synchronized void stop() throws IOException, InterruptedException {
@@ -146,13 +155,26 @@ public class HipDexMain implements Runnable, IHipDexConnectionDelegate {
         }
 
         // Close connection and join main thread
-        connection.close();
-        connection = null;
+        localAddress = null;
+        incomingConnection.close();
+        incomingConnection = null;
+        outgoingConnection.close();
+        outgoingConnection = null;
         incomingDatagram = null;
         outgoingDatagram = null;
 
         mainThread.join();
         mainThread = null;
+    }
+
+    public synchronized void connectToHit(byte[] remoteHit) throws IOException {
+        if (!running)
+            throw new IOException("Instance of HipDex not running");
+        
+        System.out.println("Public key: " + publicKey);
+        HipDexConnection conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, this);
+        connections.put(remoteHit, conn);
+        conn.connectToHost(remoteHit);
     }
 
     public synchronized void signalStartRetransmission() {

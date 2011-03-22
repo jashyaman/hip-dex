@@ -41,9 +41,18 @@ public class StartApplication extends MIDlet {
         // Listen for downloads/commands over USB connection
 	new com.sun.spot.service.BootloaderListenerService().getInstance().start();
 
+        byte[] remoteHit = new byte[16];
+        remoteHit[0] = 0x20;
+        remoteHit[1] = 0x01;
+        remoteHit[2] = 0x00;
+        remoteHit[3] = 0x15; // 5 = LTRUNC
+        for (int i=4; i<remoteHit.length; i++) remoteHit[i] = (byte)(i-4);
+
         HipDexMain main = new HipDexMain(false);
-        try { main.start(); }
+        try { main.start(); main.connectToHit(remoteHit); }
         catch (Exception e) { e.printStackTrace(); }
+
+
     }
 
     protected void pauseApp() {

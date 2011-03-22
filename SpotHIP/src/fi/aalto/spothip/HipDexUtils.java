@@ -24,13 +24,15 @@
 package fi.aalto.spothip;
 
 import com.sun.spot.util.IEEEAddress;
+import com.sun.spot.security.InvalidKeyException;
 import com.sun.spot.security.implementation.ECPublicKeyImpl;
 
 public class HipDexUtils {
     public static byte[] LTrunc(byte[] input, int bits) {
-        if (bits == 8*input.length) {
+        if (input == null)
+            return null;
+        if (bits == 8*input.length)
             return input;
-        }
 
         byte[] ret = new byte[(bits+7)/8];
         System.arraycopy(input, 0, ret, 0, ret.length);
@@ -60,8 +62,10 @@ public class HipDexUtils {
         hit[1] = 0x01;
         hit[2] = 0x00;
         hit[3] = 0x15; // 5 = LTRUNC
-        byte[] ltrunc = LTrunc(publicKey.getEncoded(), 96);
-        System.arraycopy(ltrunc, 0, hit, 4, ltrunc.length);
+
+        byte[] pubKey = new byte[1+2*publicKey.getECCurve().getField().getFFA().getByteSize()];
+        try { publicKey.getW(pubKey, 0); } catch (InvalidKeyException ike) {}
+        System.arraycopy(pubKey, 0, hit, 4, hit.length-4);
         return hit;
     }
 
