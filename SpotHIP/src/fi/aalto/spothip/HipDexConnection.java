@@ -405,11 +405,8 @@ public class HipDexConnection {
 
             byte[] plaintext = new byte[plaintextKey.length + randomI.length];
             Cipher aesCipher = Cipher.getInstance("AES/CBC/NOPADDING");
-            System.out.println("Doing decryption");
             aesCipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
             aesCipher.doFinal(encryptedValue, 0, encryptedValue.length, plaintext, 0);
-            System.out.println("RandomI: " + HipDexUtils.byteArrayToString(randomI));
-            System.out.println("Decrypted: " + HipDexUtils.byteArrayToString(plaintext));
 
             // Check that randomI is correct inside encrypted key
             boolean success = true;

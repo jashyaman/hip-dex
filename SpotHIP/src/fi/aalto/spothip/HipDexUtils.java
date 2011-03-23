@@ -86,10 +86,10 @@ public class HipDexUtils {
             return;
 
         for (int i=0; i<data.length/16; i++) {
-            String idxString = Integer.toHexString(i<<8);
-            for (int j=0; j<7-idxString.length(); j++)
+            String idxString = Integer.toHexString(i<<4);
+            for (int j=0; j<8-idxString.length(); j++)
                 System.out.print("0");
-            System.out.print(idxString+"0  ");
+            System.out.print(idxString+"  ");
 
             for (int j=16*i; j<16*i+16 && j<data.length; j++) {
                 if (data[j]>=0 && data[j] < 16) {
