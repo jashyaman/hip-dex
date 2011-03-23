@@ -54,7 +54,7 @@ import javax.microedition.midlet.MIDletStateChangeException;
 public class TestApplication extends MIDlet {
 
     protected void startApp() throws MIDletStateChangeException {
-        System.out.println("Started WebClient application ...");
+        System.out.println("Started Test application ...");
 
         // Listen for downloads/commands over USB connection
 	new com.sun.spot.service.BootloaderListenerService().getInstance().start();

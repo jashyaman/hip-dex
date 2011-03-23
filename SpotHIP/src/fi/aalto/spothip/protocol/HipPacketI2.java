@@ -33,8 +33,8 @@ public class HipPacketI2 extends HipPacket {
 
         addParameter(solution);
         addParameter(new HipHipCipher());
-        addParameter(hostId);
         addParameter(encryptedKey);
+        addParameter(hostId);
         addParameter(new HipHipMac3());
     }
 }

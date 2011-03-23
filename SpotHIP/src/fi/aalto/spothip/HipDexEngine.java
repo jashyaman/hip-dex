@@ -38,7 +38,7 @@ import java.util.*;
 
 public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
     private static final int PUZZLE_REGENERATION_TIME = 120*1000;
-    private static final int RETRANSMISSION_TIME = 5*1000;
+    private static final int RETRANSMISSION_TIME = 10*1000;
     private static final int HIP_PORT = 123;
 
     private Thread mainThread = null;
@@ -68,7 +68,7 @@ public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
 
         try {
             // Create objects containing the private and public keys of Alice and Bob
-            int curveType = ECKeyImpl.SECP160R1;
+            int curveType = ECKeyImpl.SECP192R1;
             privateKey = new ECPrivateKeyImpl(curveType);
             publicKey = new ECPublicKeyImpl(curveType);
             ECKeyImpl.genKeyPair(publicKey, privateKey);
@@ -139,14 +139,10 @@ public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
         }
     }
 
-    private void printData(String name, byte[] data) {
-        System.out.print(name + ": ");
-        System.out.println(HipDexUtils.byteArrayToString(data));
-    }
-
     public synchronized void sendPacket(HipPacket packet) throws IOException {
         byte[] packetBytes = packet.getBytes();
         System.out.println("Requesting to send packet of length " + packetBytes.length + ": " + packet);
+        HipDexUtils.printPacket(packetBytes);
 
         Datagram datagram = outgoingConnection.newDatagram(outgoingConnection.getMaximumLength());
         datagram.write(packetBytes);
@@ -187,7 +183,6 @@ public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
         if (remoteHit.length != 16)
             throw new IOException("Remote HIT length is not correct");
         
-        System.out.println("Public key: " + publicKey);
         HipDexConnection conn = new HipDexConnection(privateKey, publicKey, puzzleUtil, this);
         connections.put(HipDexUtils.byteArrayToString(remoteHit), conn);
         conn.connectToHost(remoteHit);
@@ -220,7 +215,7 @@ public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
             Enumeration conns = connections.elements();
             while (conns.hasMoreElements()) {
                 HipDexConnection conn = (HipDexConnection)conns.nextElement();
-                conn.retransmitLastPacket();
+                conn.retransmitLastPacket(false);
             }
         }
     }

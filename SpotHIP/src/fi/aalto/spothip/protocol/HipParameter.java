@@ -31,8 +31,8 @@ public abstract class HipParameter {
     public static final short SOLUTION        = 321;
     public static final short HIP_CIPHER      = 579;
     public static final short ENCRYPTED       = 641;
-    public static final short HOST_ID         = 705;
     public static final short ENCRYPTED_KEY   = 643;
+    public static final short HOST_ID         = 705;
     public static final short HIT_SUITE_LIST  = 715;
     public static final short DH_GROUP_LIST   = 2151;
 
@@ -119,6 +119,6 @@ public abstract class HipParameter {
     }
 
     public String toString() {
-        return "{ type: " + getType() + " data: " + HipDexUtils.byteArrayToString(getContents()) + " }";
+        return "{ type: " + (getType()&0xffff) + " data: " + HipDexUtils.byteArrayToString(getContents()) + " }";
     }
 }

@@ -81,6 +81,29 @@ public class HipDexUtils {
         return ret;
     }
 
+    public static void printPacket(byte[] data) {
+        if (data == null)
+            return;
+
+        for (int i=0; i<data.length/16; i++) {
+            String idxString = Integer.toHexString(i<<8);
+            for (int j=0; j<7-idxString.length(); j++)
+                System.out.print("0");
+            System.out.print(idxString+"0  ");
+
+            for (int j=16*i; j<16*i+16 && j<data.length; j++) {
+                if (data[j]>=0 && data[j] < 16) {
+                    System.out.print("0");
+                }
+                System.out.print(Integer.toHexString(data[j]&0xff) + " ");
+                if ((j+1)%8 == 0) {
+                    System.out.print(" ");
+                }
+            }
+            System.out.println();
+        }
+    }
+
     public static int compareHits(byte[] hitA, byte[] hitB) {
         if (hitA.length < hitB.length)
             return -1;

@@ -28,6 +28,8 @@ public class HipDhGroupList extends HipParameter {
     public static final byte DH_GROUP_ECP256 = 8;
     public static final byte DH_GROUP_ECP384 = 9;
     public static final byte DH_GROUP_ECP521 = 10;
+    public static final byte DH_GROUP_ECP192 = 11;
+    public static final byte DH_GROUP_ECP224 = 12;
 
     private byte[] list;
 

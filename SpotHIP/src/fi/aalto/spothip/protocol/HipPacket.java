@@ -288,9 +288,9 @@ public abstract class HipPacket {
             for (int i=0; i<hipParameters.size(); i++) {
                 ret += " " + i + ":" + hipParameters.elementAt(i);
             }
-            ret += " }";
+            ret += " ]";
         }
-        ret += " ]";
+        ret += " }";
         return ret;
     }
 }

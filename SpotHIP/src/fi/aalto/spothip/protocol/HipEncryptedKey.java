@@ -26,6 +26,12 @@ package fi.aalto.spothip.protocol;
 public class HipEncryptedKey extends HipParameter {
     private byte[] encryptedValue = new byte[0];
 
+    protected HipEncryptedKey() {}
+
+    public HipEncryptedKey(byte[] value) {
+        encryptedValue = value;
+    }
+
     public short getType() {
         return HipParameter.ENCRYPTED_KEY;
     }

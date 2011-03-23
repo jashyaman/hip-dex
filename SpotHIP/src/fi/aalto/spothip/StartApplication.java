@@ -36,16 +36,16 @@ import javax.microedition.midlet.MIDletStateChangeException;
 public class StartApplication extends MIDlet {
 
     protected void startApp() throws MIDletStateChangeException {
-        System.out.println("Started WebClient application ...");
+        System.out.println("Started HipDex application ...");
 
         // Listen for downloads/commands over USB connection
 	new com.sun.spot.service.BootloaderListenerService().getInstance().start();
 
         byte[] remoteHit = new byte[] {
             0x20, 0x01, 0x00, 0x15,
-            (byte)0xd1, (byte)0xcd, (byte)0xfd, (byte)0xd9,
-            (byte)0x91, (byte)0xaf, (byte)0x3b, (byte)0xd0,
-            (byte)0xd2, (byte)0xa3, (byte)0x75, (byte)0x73
+            (byte)0x5c, (byte)0x0e, (byte)0x5a, (byte)0x74,
+            (byte)0x29, (byte)0x3f, (byte)0xbe, (byte)0x13,
+            (byte)0xcb, (byte)0xfa, (byte)0xf6, (byte)0xbd
         };
 
         /*

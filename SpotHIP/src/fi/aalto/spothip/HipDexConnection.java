@@ -26,6 +26,8 @@ package fi.aalto.spothip;
 import fi.aalto.spothip.crypto.*;
 import fi.aalto.spothip.protocol.*;
 
+import com.sun.spotx.crypto.*;
+import com.sun.spotx.crypto.spec.*;
 import com.sun.spotx.crypto.implementation.*;
 import com.sun.spot.security.*;
 import com.sun.spot.security.implementation.*;
@@ -54,13 +56,14 @@ public class HipDexConnection {
     private byte[] localHit;
     private byte[] remoteHit;
 
-    private HipDhGroupList dhGroupList = new HipDhGroupList(HipDhGroupList.DH_GROUP_ECP160);
+    private HipDhGroupList dhGroupList = null;
 
     private byte[] localEncryptionKey;
     private byte[] localIntegrityKey;
     private byte[] remoteEncryptionKey;
     private byte[] remoteIntegrityKey;
 
+    private byte[] randomI;
     private byte[] keyX;
     private byte[] keyY;
 
@@ -68,6 +71,14 @@ public class HipDexConnection {
             HipDexPuzzleUtil puzzle, IHipDexConnectionDelegate connectionDelegate) {
         privateKey = privKey;
         publicKey = pubKey;
+
+        if (publicKey.getECCurve().getField().getBitSize() == 160) {
+            dhGroupList = new HipDhGroupList(HipDhGroupList.DH_GROUP_ECP160);
+        } else if (publicKey.getECCurve().getField().getBitSize() == 192) {
+            dhGroupList = new HipDhGroupList(HipDhGroupList.DH_GROUP_ECP192);
+        } else if (publicKey.getECCurve().getField().getBitSize() == 224) {
+            dhGroupList = new HipDhGroupList(HipDhGroupList.DH_GROUP_ECP224);
+        }
 
         currentState = STATE_UNASSOCIATED;
         puzzleUtil = puzzle;
@@ -101,11 +112,13 @@ public class HipDexConnection {
         delegate.sendPacket(packet);
     }
 
-    public void retransmitLastPacket() {
-        if (currentState != STATE_I1_SENT && currentState != STATE_I2_SENT)
-            return;
-        if (lastPacket == null)
-            return;
+    public void retransmitLastPacket(boolean forced) {
+        if (!forced) {
+            if (currentState != STATE_I1_SENT && currentState != STATE_I2_SENT)
+                return;
+            if (lastPacket == null)
+                return;
+        }
         System.out.println("Retransmitting last packet");
         try {
             delegate.sendPacket(lastPacket);
@@ -150,7 +163,7 @@ public class HipDexConnection {
         } else if (currentState == STATE_R2_SENT) {
             if (packet.getType() == HipPacket.TYPE_I2) {
                 // Validate I2 packet, re-send R2 packet
-                processPacket((HipPacketI2)packet, sender);
+                retransmitLastPacket(true);
             }
         } else if (currentState == STATE_ESTABLISHED) {
             if (packet.getType() == HipPacket.TYPE_I2) {
@@ -223,12 +236,20 @@ public class HipDexConnection {
             System.out.println("Generating keys using public key failed");
             return false;
         }
+        
+        byte[] encKey = generateSessionKeyAndEncrypt(true, puzzle.getRandomI());
+        if (encKey == null) {
+            System.out.println("Generating and encrypting session key failed");
+            return false;
+        }
 
-        byte[] solutionJ = HipDexPuzzleUtil.solvePuzzle(puzzle.getRandomI(), localHit, remoteHit, puzzle.getComplexity());
-        HipSolution solution = new HipSolution(puzzle.getComplexity(), puzzle.getRandomI(), solutionJ);
+        randomI = puzzle.getRandomI();
+        byte[] solutionJ = HipDexPuzzleUtil.solvePuzzle(randomI, localHit, remoteHit, puzzle.getComplexity());
+        HipSolution solution = new HipSolution(puzzle.getComplexity(), randomI, solutionJ);
         HipHostId ourHostId = new HipHostId(publicKey);
+        HipEncryptedKey encryptedKey = new HipEncryptedKey(encKey);
 
-        HipPacketI2 i2Packet = new HipPacketI2(solution, ourHostId, new HipEncryptedKey());
+        HipPacketI2 i2Packet = new HipPacketI2(solution, ourHostId, encryptedKey);
         i2Packet.setSenderHit(localHit);
         i2Packet.setReceiverHit(remoteHit);
         i2Packet.recalculateCmac(localIntegrityKey);
@@ -248,9 +269,10 @@ public class HipDexConnection {
         // Validate the puzzle solution, extract keying material, generate R2
         HipSolution solution = (HipSolution)packet.getParameter(HipParameter.SOLUTION);
         HipHostId hostId = (HipHostId)packet.getParameter(HipParameter.HOST_ID);
+        HipEncryptedKey theirEncryptedKey = (HipEncryptedKey)packet.getParameter(HipParameter.ENCRYPTED_KEY);
         HipHipMac3 hipMac = (HipHipMac3)packet.getParameter(HipParameter.HIP_MAC_3);
-        if (solution == null || hostId == null || hipMac == null) {
-            System.out.println("Either solution, host id or mac not found");
+        if (solution == null || hostId == null || theirEncryptedKey == null || hipMac == null) {
+            System.out.println("Either solution, host id, encrypted key or mac not found");
             return false;
         }
 
@@ -274,8 +296,20 @@ public class HipDexConnection {
             return false;
         }
         System.out.println("I2 CMAC verified: " + packet.verifyCmac(remoteIntegrityKey));
+        System.out.println("EncryptedKey decrypted OK: " + decryptSessionKey(false, solution.getRandomI(), theirEncryptedKey.getContents()));
         
-        HipPacketR2 r2Packet = new HipPacketR2(dhGroupList, new HipEncryptedKey());
+        byte[] encKey = generateSessionKeyAndEncrypt(false, solution.getRandomI());
+        if (encKey == null) {
+            System.out.println("Generating and encrypting session key failed");
+            return false;
+        }
+
+        System.out.println("Session key X: " + HipDexUtils.byteArrayToString(keyX));
+        System.out.println("Session key Y: " + HipDexUtils.byteArrayToString(keyY));
+
+        HipEncryptedKey encryptedKey = new HipEncryptedKey(encKey);
+        
+        HipPacketR2 r2Packet = new HipPacketR2(dhGroupList, encryptedKey);
         r2Packet.setSenderHit(localHit);
         r2Packet.setReceiverHit(remoteHit);
         r2Packet.recalculateCmac(localIntegrityKey);
@@ -290,12 +324,17 @@ public class HipDexConnection {
             return false;
         }
 
+        HipEncryptedKey encryptedKey = (HipEncryptedKey)packet.getParameter(HipParameter.ENCRYPTED_KEY);
         HipHipMac3 hipMac = (HipHipMac3)packet.getParameter(HipParameter.HIP_MAC_3);
-        if (hipMac == null) {
-            System.out.println("Mac not found");
+        if (randomI == null || encryptedKey == null || hipMac == null) {
+            System.out.println("Either randomI, encrypted key or mac not found");
             return false;
         }
         System.out.println("R2 CMAC verified: " + packet.verifyCmac(remoteIntegrityKey));
+        System.out.println("EncryptedKey decrypted OK: " + decryptSessionKey(true, randomI, encryptedKey.getContents()));
+
+        System.out.println("Session key X: " + HipDexUtils.byteArrayToString(keyX));
+        System.out.println("Session key Y: " + HipDexUtils.byteArrayToString(keyY));
         
         // Check the DH_GROUP_LIST, extract keying material,
         // cancel or restart handshake if DH_GROUP_LIST doesn't match
@@ -329,5 +368,67 @@ public class HipDexConnection {
             }
         } catch (Exception e) { return false; }
         return true;
+    }
+
+    private byte[] generateSessionKeyAndEncrypt(boolean initiator, byte[] randomI) {
+        try {
+            byte[] randomArray = new byte[16];
+            SecureRandom secureRandom = SecureRandom.getInstance(SecureRandom.ALG_SECURE_RANDOM);
+            secureRandom.generateData(randomArray, 0, randomArray.length);
+
+            SecretKeySpec keySpec = new SecretKeySpec(localEncryptionKey, 0, localEncryptionKey.length, "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(randomI, 0, randomI.length);
+            byte[] plaintext = new byte[randomArray.length + randomI.length];
+            System.arraycopy(randomArray, 0, plaintext, 0, randomArray.length);
+            System.arraycopy(randomI, 0, plaintext, randomArray.length, randomI.length);
+
+            Cipher aesCipher = Cipher.getInstance("AES/CBC/NOPADDING");
+            aesCipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            aesCipher.doFinal(plaintext, 0, plaintext.length, plaintext, 0);
+            if (initiator) {
+                keyX = randomArray;
+            } else {
+                keyY = randomArray;
+            }
+            return plaintext;
+        }
+        catch (Exception e) {}
+        return null;
+    }
+
+    private boolean decryptSessionKey(boolean initiator, byte[] randomI, byte[] encryptedValue) {
+        try {
+            byte[] plaintextKey = new byte[16];
+
+            SecretKeySpec keySpec = new SecretKeySpec(remoteEncryptionKey, 0, remoteEncryptionKey.length, "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(randomI, 0, randomI.length);
+
+            byte[] plaintext = new byte[plaintextKey.length + randomI.length];
+            Cipher aesCipher = Cipher.getInstance("AES/CBC/NOPADDING");
+            System.out.println("Doing decryption");
+            aesCipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            aesCipher.doFinal(encryptedValue, 0, encryptedValue.length, plaintext, 0);
+            System.out.println("RandomI: " + HipDexUtils.byteArrayToString(randomI));
+            System.out.println("Decrypted: " + HipDexUtils.byteArrayToString(plaintext));
+
+            // Check that randomI is correct inside encrypted key
+            boolean success = true;
+            for (int i=0; i<randomI.length; i++) {
+                if (randomI[i] != plaintext[plaintextKey.length+i]) {
+                    success = false;
+                }
+            }
+            if (!success) return false;
+
+            System.arraycopy(plaintext, 0, plaintextKey, 0, plaintextKey.length);
+            if (initiator) {
+                keyY = plaintextKey;
+            } else {
+                keyX = plaintextKey;
+            }
+            return true;
+        }
+        catch (Exception e) {}
+        return false;
     }
 }

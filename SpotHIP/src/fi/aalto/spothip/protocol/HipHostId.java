@@ -41,20 +41,39 @@ public class HipHostId extends HipParameter {
     protected HipHostId() {}
 
     public HipHostId(ECPublicKeyImpl publicKey) {
+        int bitSize = publicKey.getECCurve().getField().getBitSize();
         byte[] pubKey = new byte[1+2*publicKey.getECCurve().getField().getFFA().getByteSize()];
         try { publicKey.getW(pubKey, 0); } catch (InvalidKeyException ike) {}
 
         // Copy the host id to the hi array
         hi = new byte[pubKey.length+2];
-        hi[1] = CURVE_SECP160R1;
+        if (bitSize == 160) {
+            hi[1] = CURVE_SECP160R1;
+        } else if (bitSize == 192) {
+            hi[1] = CURVE_SECP192R1;
+        } else if (bitSize == 224) {
+            hi[1] = CURVE_SECP224R1;
+        }
         System.arraycopy(pubKey, 0, hi, 2, pubKey.length);
     }
 
     public ECPublicKeyImpl getPublicKey() {
+        int curveId = 0;
+        int type = ((hi[0]&0xff)<<8)|(hi[1]&0xff);
+        if (type == CURVE_SECP160R1) {
+            curveId = ECKeyImpl.SECP160R1;
+        } else if (type == CURVE_SECP192R1) {
+            curveId = ECKeyImpl.SECP192R1;
+        } else if (type == CURVE_SECP224R1) {
+            curveId = ECKeyImpl.SECP224R1;
+        } else {
+            return null;
+        }
+        
         byte[] pubKey = new byte[hi.length-2];
         System.arraycopy(hi, 2, pubKey, 0, pubKey.length);
 
-        ECPublicKeyImpl publicKey = new ECPublicKeyImpl(ECKeyImpl.SECP160R1);
+        ECPublicKeyImpl publicKey = new ECPublicKeyImpl(curveId);
         try { publicKey.setW(pubKey, 0, pubKey.length); }
         catch (GeneralSecurityException gse) { return null; }
         return publicKey;
