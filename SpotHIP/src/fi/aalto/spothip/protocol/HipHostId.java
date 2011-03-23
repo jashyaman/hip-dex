@@ -23,17 +23,49 @@
 
 package fi.aalto.spothip.protocol;
 
+import com.sun.spot.security.InvalidKeyException;
+import com.sun.spot.security.GeneralSecurityException;
+import com.sun.spot.security.implementation.ECKeyImpl;
+import com.sun.spot.security.implementation.ECPublicKeyImpl;
+
 public class HipHostId extends HipParameter {
+    private static final int ALGORITHM_ECDH = 11;
+    private static final int CURVE_SECP160R1 = 1;
+    private static final int CURVE_SECP192R1 = 2;
+    private static final int CURVE_SECP224R1 = 3;
+
     public byte[] hi = new byte[0];
     public byte diType;
     public byte[] di = new byte[0];
+
+    protected HipHostId() {}
+
+    public HipHostId(ECPublicKeyImpl publicKey) {
+        byte[] pubKey = new byte[1+2*publicKey.getECCurve().getField().getFFA().getByteSize()];
+        try { publicKey.getW(pubKey, 0); } catch (InvalidKeyException ike) {}
+
+        // Copy the host id to the hi array
+        hi = new byte[pubKey.length+2];
+        hi[1] = CURVE_SECP160R1;
+        System.arraycopy(pubKey, 0, hi, 2, pubKey.length);
+    }
+
+    public ECPublicKeyImpl getPublicKey() {
+        byte[] pubKey = new byte[hi.length-2];
+        System.arraycopy(hi, 2, pubKey, 0, pubKey.length);
+
+        ECPublicKeyImpl publicKey = new ECPublicKeyImpl(ECKeyImpl.SECP160R1);
+        try { publicKey.setW(pubKey, 0, pubKey.length); }
+        catch (GeneralSecurityException gse) { return null; }
+        return publicKey;
+    }
 
     public short getType() {
         return HipParameter.HOST_ID;
     }
 
     public int getContentLength() {
-        return 4+hi.length+di.length;
+        return 6+hi.length+di.length;
     }
 
     public byte[] getContents() {
@@ -42,12 +74,29 @@ public class HipHostId extends HipParameter {
         ret[1] = (byte) (hi.length&0xff);
         ret[2] = (byte) (((diType<<4)&0xf0) + ((di.length>>8)&0x0f));
         ret[3] = (byte) (di.length%0xff);
-        System.arraycopy(hi, 0, ret, 4, hi.length);
-        System.arraycopy(di, 0, ret, 4+hi.length, di.length);
+        ret[4] = 0x00;
+        ret[5] = ALGORITHM_ECDH;
+        System.arraycopy(hi, 0, ret, 6, hi.length);
+        System.arraycopy(di, 0, ret, 6+hi.length, di.length);
         return ret;
     }
 
     protected boolean parseContent(byte[] content) {
+        if (content.length < 6)
+            return false;
+
+        int hiLength = ((content[0]&0xff)<<8)|(content[1]&0xff);
+        int diLength = ((content[2]&0xff)<<8)|(content[3]&0xff);
+        int algorithm = ((content[4]&0xff)<<8)|(content[5]&0xff);
+        if (6+hiLength+diLength > content.length)
+            return false;
+        if (algorithm != ALGORITHM_ECDH)
+            return false;
+
+        hi = new byte[hiLength];
+        di = new byte[diLength];
+        System.arraycopy(content, 6, hi, 0, hiLength);
+        System.arraycopy(content, 6+hiLength, di, 0, diLength);
         return true;
     }
 }

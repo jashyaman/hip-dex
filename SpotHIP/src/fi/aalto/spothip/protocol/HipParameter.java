@@ -23,6 +23,8 @@
 
 package fi.aalto.spothip.protocol;
 
+import fi.aalto.spothip.HipDexUtils;
+
 public abstract class HipParameter {
     public static final short R1_COUNTER      = 128;
     public static final short PUZZLE          = 257;
@@ -114,5 +116,9 @@ public abstract class HipParameter {
             return null;
         }
         return param;
+    }
+
+    public String toString() {
+        return "{ type: " + getType() + " data: " + HipDexUtils.byteArrayToString(getContents()) + " }";
     }
 }

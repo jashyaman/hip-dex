@@ -28,13 +28,13 @@ public class HipPacketI2 extends HipPacket {
         super(HipPacket.TYPE_I2);
     }
     
-    public HipPacketI2(HipSolution solution) {
+    public HipPacketI2(HipSolution solution, HipHostId hostId, HipEncryptedKey encryptedKey) {
         super(HipPacket.TYPE_I2);
 
         addParameter(solution);
         addParameter(new HipHipCipher());
-        addParameter(new HipHostId());
-        addParameter(new HipEncryptedKey());
+        addParameter(hostId);
+        addParameter(encryptedKey);
         addParameter(new HipHipMac3());
     }
 }

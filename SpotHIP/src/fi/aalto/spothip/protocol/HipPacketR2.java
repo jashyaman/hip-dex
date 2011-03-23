@@ -28,11 +28,11 @@ public class HipPacketR2 extends HipPacket {
         super(HipPacket.TYPE_R2);
     }
 
-    public HipPacketR2(HipDhGroupList dhGroupList) {
+    public HipPacketR2(HipDhGroupList dhGroupList, HipEncryptedKey encryptedKey) {
         super(HipPacket.TYPE_R2);
 
         addParameter(dhGroupList);
-        addParameter(new HipEncryptedKey());
+        addParameter(encryptedKey);
         addParameter(new HipHipMac3());
     }
 }

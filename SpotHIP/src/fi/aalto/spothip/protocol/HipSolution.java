@@ -26,8 +26,8 @@ package fi.aalto.spothip.protocol;
 public class HipSolution extends HipParameter {
     private byte k;
     private short opaque;
-    private byte[] randomI;
-    private byte[] solutionJ;
+    private byte[] randomI = new byte[0];
+    private byte[] solutionJ = new byte[0];
 
     protected HipSolution() {}
 
@@ -38,6 +38,14 @@ public class HipSolution extends HipParameter {
         System.arraycopy(puzzleI, 0, randomI, 0, puzzleI.length);
         solutionJ = new byte[puzzleJ.length];
         System.arraycopy(puzzleJ, 0, solutionJ, 0, puzzleJ.length);
+    }
+
+    public byte[] getRandomI() {
+        return randomI;
+    }
+
+    public byte[] getSolutionJ() {
+        return solutionJ;
     }
 
     public short getType() {
@@ -59,6 +67,15 @@ public class HipSolution extends HipParameter {
     }
 
     protected boolean parseContent(byte[] content) {
+       if (content.length < 4)
+            return false;
+
+        k = content[0];
+        opaque = (short)(((content[2]&0xff)<<8)|(content[3]&0xff));
+        randomI = new byte[(content.length-4)/2];
+        solutionJ = new byte[(content.length-4)/2];
+        System.arraycopy(content, 4, randomI, 0, randomI.length);
+        System.arraycopy(content, 4+randomI.length, solutionJ, 0, solutionJ.length);
         return true;
     }
 }

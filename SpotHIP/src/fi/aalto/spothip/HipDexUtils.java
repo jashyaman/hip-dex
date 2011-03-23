@@ -65,7 +65,7 @@ public class HipDexUtils {
 
         byte[] pubKey = new byte[1+2*publicKey.getECCurve().getField().getFFA().getByteSize()];
         try { publicKey.getW(pubKey, 0); } catch (InvalidKeyException ike) {}
-        System.arraycopy(pubKey, 0, hit, 4, hit.length-4);
+        System.arraycopy(pubKey, 1, hit, 4, hit.length-4);
         return hit;
     }
 

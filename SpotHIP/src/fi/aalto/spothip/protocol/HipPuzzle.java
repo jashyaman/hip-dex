@@ -27,7 +27,7 @@ public class HipPuzzle extends HipParameter {
     private byte k;
     private byte lifetime;
     private short opaque;
-    private byte[] randomI;
+    private byte[] randomI = new byte[0];
 
     protected HipPuzzle() {}
 
@@ -39,20 +39,20 @@ public class HipPuzzle extends HipParameter {
         System.arraycopy(puzzleI, 0, randomI, 0, puzzleI.length);
     }
 
-    public short getType() {
-        return HipParameter.PUZZLE;
-    }
-
-    public int getContentLength() {
-        return 4+randomI.length;
-    }
-
     public byte getComplexity() {
         return k;
     }
 
     public byte[] getRandomI() {
         return randomI;
+    }
+
+    public short getType() {
+        return HipParameter.PUZZLE;
+    }
+
+    public int getContentLength() {
+        return 4+randomI.length;
     }
 
     public byte[] getContents() {
@@ -66,6 +66,14 @@ public class HipPuzzle extends HipParameter {
     }
 
     protected boolean parseContent(byte[] content) {
+        if (content.length < 4)
+            return false;
+
+        k = content[0];
+        lifetime = content[1];
+        opaque = (short)(((content[2]&0xff)<<8)|(content[3]&0xff));
+        randomI = new byte[content.length-4];
+        System.arraycopy(content, 4, randomI, 0, randomI.length);
         return true;
     }
 }

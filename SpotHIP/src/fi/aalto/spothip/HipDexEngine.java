@@ -38,7 +38,7 @@ import java.util.*;
 
 public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
     private static final int PUZZLE_REGENERATION_TIME = 120*1000;
-    private static final int RETRANSMISSION_TIME = 500;
+    private static final int RETRANSMISSION_TIME = 5*1000;
     private static final int HIP_PORT = 123;
 
     private Thread mainThread = null;
@@ -139,12 +139,13 @@ public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
     }
 
     public synchronized void sendPacket(HipPacket packet) throws IOException {
-        System.out.println("Requesting to send packet");
-        printData("packet", packet.getBytes());
+        byte[] packetBytes = packet.getBytes();
+        System.out.println("Requesting to send packet of length " + packetBytes.length + ": " + packet);
 
-        outgoingDatagram.reset();
-        outgoingDatagram.write(packet.getBytes());
-        outgoingConnection.send(outgoingDatagram);
+        Datagram datagram = outgoingConnection.newDatagram(outgoingConnection.getMaximumLength());
+        datagram.write(packetBytes);
+        outgoingConnection.send(datagram);
+        System.out.println("Packet sent successfully");
     }
 
     public synchronized void stop() throws IOException, InterruptedException {

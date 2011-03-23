@@ -85,7 +85,7 @@ public abstract class HipPacket {
         hipParameters.addElement(parameter);
     }
 
-    public void recalculateCmac(byte[] cmacKey) throws InvalidKeyException {
+    public void recalculateCmac(byte[] cmacKey) {
         HipHipMac3 hipMac = (HipHipMac3)getParameter(HipParameter.HIP_MAC_3);
         if (hipMac == null) return;
 
@@ -109,7 +109,7 @@ public abstract class HipPacket {
             
             aesCmac = new AesCmac();
             aesCmac.init(keySpec);
-        } catch (NoSuchAlgorithmException nsae) {}
+        } catch (Exception e) { return; }
         aesCmac.updateByte(nextHeader);
         aesCmac.updateByte((byte) ((HIP_HEADER_LENGTH+parametersLength-8)/8));
         aesCmac.updateByte(packetType);
@@ -212,7 +212,6 @@ public abstract class HipPacket {
         packetData[4] = 0; packetData[5] = 0;
         if (checksum != calculateChecksum(packetData))
             return null;
-        System.out.println("Checksum is correct");
 
         HipPacket packet = null;
         byte packetType = (byte)(packetData[2]&0x7f);
@@ -245,7 +244,6 @@ public abstract class HipPacket {
             int paramType = ((packetData[currentIdx]&0xff)<<8)|(packetData[currentIdx+1]&0xff);
             int paramLength = ((packetData[currentIdx+2]&0xff)<<8)|(packetData[currentIdx+3]&0xff);
             int totalLength = 11+paramLength-(paramLength+3)%8;
-            System.out.println("Parsed parameter type " + paramType + " content length " + paramLength);
 
             if (packetData.length-currentIdx < totalLength) {
                 // Not enough data for parameter contents
@@ -274,7 +272,14 @@ public abstract class HipPacket {
         ret += " controls: " + (controls&0xffff);
         ret += " senderHIT: " + HipDexUtils.byteArrayToString(senderHit);
         ret += " receiverHIT: " + HipDexUtils.byteArrayToString(receiverHit);
-        ret += " }";
+        if (hipParameters.size() > 0) {
+            ret += " parameters: [";
+            for (int i=0; i<hipParameters.size(); i++) {
+                ret += " " + i + ":" + hipParameters.elementAt(i);
+            }
+            ret += " }";
+        }
+        ret += " ]";
         return ret;
     }
 }

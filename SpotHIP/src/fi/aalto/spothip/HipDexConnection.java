@@ -26,6 +26,8 @@ package fi.aalto.spothip;
 import fi.aalto.spothip.crypto.*;
 import fi.aalto.spothip.protocol.*;
 
+import com.sun.spotx.crypto.implementation.*;
+import com.sun.spot.security.*;
 import com.sun.spot.security.implementation.*;
 import com.sun.spot.util.IEEEAddress;
 
@@ -53,6 +55,12 @@ public class HipDexConnection {
     private byte[] remoteHit;
 
     private HipDhGroupList dhGroupList = new HipDhGroupList(HipDhGroupList.DH_GROUP_ECP160);
+
+    private byte[] localEncryptionKey;
+    private byte[] localIntegrityKey;
+    private byte[] remoteEncryptionKey;
+    private byte[] remoteIntegrityKey;
+
     private byte[] keyX;
     private byte[] keyY;
 
@@ -105,6 +113,7 @@ public class HipDexConnection {
     }
 
     public void handlePacket(HipPacket packet, IEEEAddress sender) throws IOException {
+        System.out.println("Current state " + currentState + " packet type " + packet.getType());
         if (currentState == STATE_UNASSOCIATED) {
             if (packet.getType() == HipPacket.TYPE_I1) {
                 // Validate I1 packet, send R1 packet
@@ -181,8 +190,9 @@ public class HipDexConnection {
         // No validation, just send R1
         byte[] puzzleI = puzzleUtil.calculateI(packet.getSenderHit(), packet.getReceiverHit(), new byte[0], new byte[0]);
         HipPuzzle puzzle = new HipPuzzle(puzzleUtil.getComplexity(), puzzleI);
+        HipHostId hostId = new HipHostId(publicKey);
 
-        HipPacketR1 r1Packet = new HipPacketR1(puzzle, new HipHostId(), dhGroupList);
+        HipPacketR1 r1Packet = new HipPacketR1(puzzle, hostId, dhGroupList);
         r1Packet.setSenderHit(localHit);
         r1Packet.setReceiverHit(packet.getSenderHit());
         sendPacket(r1Packet);
@@ -191,19 +201,38 @@ public class HipDexConnection {
 
     private boolean processPacket(HipPacketR1 packet, IEEEAddress sender) throws IOException {
         // Validate DH_GROUP_LIST
-        if (!dhGroupList.equals(packet.getParameter(HipParameter.DH_GROUP_LIST)))
+        if (!dhGroupList.equals(packet.getParameter(HipParameter.DH_GROUP_LIST))) {
+            System.out.println("Group DH list not equal");
             return false;
+        }
         
         // Generate I2
         HipPuzzle puzzle = (HipPuzzle)packet.getParameter(HipParameter.PUZZLE);
-        if (puzzle == null) return false;
+        HipHostId theirHostId = (HipHostId)packet.getParameter(HipParameter.HOST_ID);
+        if (puzzle == null || theirHostId == null) {
+            System.out.println("Either puzzle or host id not found");
+            return false;
+        }
+
+        ECPublicKeyImpl theirPublicKey = theirHostId.getPublicKey();
+        if (theirPublicKey == null) {
+            System.out.println("received host id not valid");
+            return false;
+        }
+
+        if (!generateKeysFromPublicKey(theirPublicKey, false, packet.getSenderHit(), packet.getReceiverHit(), puzzle.getRandomI())) {
+            System.out.println("Generating keys using public key failed");
+            return false;
+        }
 
         byte[] solutionJ = HipDexPuzzleUtil.solvePuzzle(puzzle.getRandomI(), localHit, remoteHit, puzzle.getComplexity());
         HipSolution solution = new HipSolution(puzzle.getComplexity(), puzzle.getRandomI(), solutionJ);
+        HipHostId ourHostId = new HipHostId(publicKey);
 
-        HipPacketI2 i2Packet = new HipPacketI2(solution);
+        HipPacketI2 i2Packet = new HipPacketI2(solution, ourHostId, new HipEncryptedKey());
         i2Packet.setSenderHit(localHit);
         i2Packet.setReceiverHit(remoteHit);
+        i2Packet.recalculateCmac(localIntegrityKey);
         sendPacket(i2Packet);
         return true;
     }
@@ -216,13 +245,65 @@ public class HipDexConnection {
                 return false;
         }
         // Validate the puzzle solution, extract keying material, generate R2
+        HipSolution solution = (HipSolution)packet.getParameter(HipParameter.PUZZLE);
+        HipHostId hostId = (HipHostId)packet.getParameter(HipParameter.HOST_ID);
+        if (solution == null || hostId == null)
+            return false;
 
-        return false;
+        boolean puzzleVerified = puzzleUtil.verifyPuzzle(solution.getRandomI(), solution.getSolutionJ(), packet.getSenderHit(), packet.getReceiverHit(), new byte[0], new byte[0]);
+        if (!puzzleVerified) {
+            System.out.println("Puzzle didn't verify correctly");
+        }
+        
+        // Update the remoteHit to be correct
+        remoteHit = new byte[packet.getSenderHit().length];
+        System.arraycopy(packet.getSenderHit(), 0, remoteHit, 0, remoteHit.length);
+        
+        ECPublicKeyImpl theirPublicKey = hostId.getPublicKey();
+        if (theirPublicKey == null)
+            return false;
+
+        if (!generateKeysFromPublicKey(theirPublicKey, false, packet.getSenderHit(), packet.getReceiverHit(), solution.getRandomI()))
+            return false;
+
+        HipPacketR2 r2Packet = new HipPacketR2(dhGroupList, new HipEncryptedKey());
+        r2Packet.setSenderHit(localHit);
+        r2Packet.setReceiverHit(remoteHit);
+        r2Packet.recalculateCmac(localIntegrityKey);
+        sendPacket(r2Packet);
+        return true;
     }
 
     private boolean processPacket(HipPacketR2 packet, IEEEAddress sender) throws IOException {
         // Check the DH_GROUP_LIST, extract keying material,
         // cancel or restart handshake if DH_GROUP_LIST doesn't match
         return false;
+    }
+
+    private boolean generateKeysFromPublicKey(ECPublicKeyImpl publicKey, boolean initiator, byte[] senderHit, byte[] receiverHit, byte[] randomI) {
+        ECDHKeyAgreement keyAgreement = new ECDHKeyAgreement();
+        try {
+            byte[] pubKey = new byte[1+2*publicKey.getECCurve().getField().getFFA().getByteSize()];
+            byte[] secret = new byte[(pubKey.length-1)/2];
+            publicKey.getW(pubKey, 0);
+          
+            keyAgreement.init(privateKey);
+            keyAgreement.generateSecret(pubKey, 0, pubKey.length, secret, 0);
+            HipDexKeyUtil keyUtil = new HipDexKeyUtil(16, 16);
+            if (initiator) {
+                keyUtil.generateKeys(receiverHit, senderHit, randomI, secret);
+                localEncryptionKey = keyUtil.getInitiatorEncryptionKey();
+                localIntegrityKey = keyUtil.getInitiatorIntegrityKey();
+                remoteEncryptionKey = keyUtil.getResponderEncryptionKey();
+                remoteIntegrityKey = keyUtil.getInitiatorIntegrityKey();
+            } else {
+                keyUtil.generateKeys(senderHit, receiverHit, randomI, secret);
+                localEncryptionKey = keyUtil.getResponderEncryptionKey();
+                localIntegrityKey = keyUtil.getResponderIntegrityKey();
+                remoteEncryptionKey = keyUtil.getInitiatorEncryptionKey();
+                remoteIntegrityKey = keyUtil.getInitiatorIntegrityKey();
+            }
+        } catch (Exception e) { return false; }
+        return true;
     }
 }
