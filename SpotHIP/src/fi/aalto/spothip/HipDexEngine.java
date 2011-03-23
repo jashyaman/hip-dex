@@ -73,6 +73,7 @@ public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
             publicKey = new ECPublicKeyImpl(curveType);
             ECKeyImpl.genKeyPair(publicKey, privateKey);
             ourHitString = HipDexUtils.byteArrayToString(HipDexUtils.publicKeyToHit(publicKey));
+            System.out.println("Our HIT: " + ourHitString);
         }
         catch (InvalidKeyException ike) { ike.printStackTrace(); }
         catch (NoSuchAlgorithmException nsae) { nsae.printStackTrace(); }
@@ -112,6 +113,11 @@ public class HipDexEngine implements Runnable, IHipDexConnectionDelegate {
                     System.out.println("Parsing the packet failed");
                     continue;
                 }
+                if (!ourHitString.equals(HipDexUtils.byteArrayToString(packet.getReceiverHit()))) {
+                    System.out.println("Receiver HIT doesn't match our HIT");
+                    continue;
+                }
+
                 System.out.println("Received packet data: " + packet);
                 String senderHitString = HipDexUtils.byteArrayToString(packet.getSenderHit());
 

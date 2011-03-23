@@ -113,7 +113,6 @@ public class HipDexConnection {
     }
 
     public void handlePacket(HipPacket packet, IEEEAddress sender) throws IOException {
-        System.out.println("Current state " + currentState + " packet type " + packet.getType());
         if (currentState == STATE_UNASSOCIATED) {
             if (packet.getType() == HipPacket.TYPE_I1) {
                 // Validate I1 packet, send R1 packet
@@ -220,7 +219,7 @@ public class HipDexConnection {
             return false;
         }
 
-        if (!generateKeysFromPublicKey(theirPublicKey, false, packet.getSenderHit(), packet.getReceiverHit(), puzzle.getRandomI())) {
+        if (!generateKeysFromPublicKey(theirPublicKey, true, packet.getSenderHit(), packet.getReceiverHit(), puzzle.getRandomI())) {
             System.out.println("Generating keys using public key failed");
             return false;
         }
@@ -241,14 +240,19 @@ public class HipDexConnection {
         if (currentState == STATE_I2_SENT) {
             // Check if our HIT or their HIT is larger, if their HIT is larger
             // then just drop the packet, otherwise process and proceed
-            if (HipDexUtils.compareHits(localHit, remoteHit) < 0)
+            if (HipDexUtils.compareHits(localHit, remoteHit) < 0) {
+                System.out.println("Our HIT is smaller, act as initiator");
                 return false;
+            }
         }
         // Validate the puzzle solution, extract keying material, generate R2
-        HipSolution solution = (HipSolution)packet.getParameter(HipParameter.PUZZLE);
+        HipSolution solution = (HipSolution)packet.getParameter(HipParameter.SOLUTION);
         HipHostId hostId = (HipHostId)packet.getParameter(HipParameter.HOST_ID);
-        if (solution == null || hostId == null)
+        HipHipMac3 hipMac = (HipHipMac3)packet.getParameter(HipParameter.HIP_MAC_3);
+        if (solution == null || hostId == null || hipMac == null) {
+            System.out.println("Either solution, host id or mac not found");
             return false;
+        }
 
         boolean puzzleVerified = puzzleUtil.verifyPuzzle(solution.getRandomI(), solution.getSolutionJ(), packet.getSenderHit(), packet.getReceiverHit(), new byte[0], new byte[0]);
         if (!puzzleVerified) {
@@ -260,12 +264,17 @@ public class HipDexConnection {
         System.arraycopy(packet.getSenderHit(), 0, remoteHit, 0, remoteHit.length);
         
         ECPublicKeyImpl theirPublicKey = hostId.getPublicKey();
-        if (theirPublicKey == null)
+        if (theirPublicKey == null) {
+            System.out.println("received host id not valid");
             return false;
-
-        if (!generateKeysFromPublicKey(theirPublicKey, false, packet.getSenderHit(), packet.getReceiverHit(), solution.getRandomI()))
+        }
+        
+        if (!generateKeysFromPublicKey(theirPublicKey, false, packet.getSenderHit(), packet.getReceiverHit(), solution.getRandomI())) {
+            System.out.println("Generating keys using public key failed");
             return false;
-
+        }
+        System.out.println("I2 CMAC verified: " + packet.verifyCmac(remoteIntegrityKey));
+        
         HipPacketR2 r2Packet = new HipPacketR2(dhGroupList, new HipEncryptedKey());
         r2Packet.setSenderHit(localHit);
         r2Packet.setReceiverHit(remoteHit);
@@ -275,9 +284,22 @@ public class HipDexConnection {
     }
 
     private boolean processPacket(HipPacketR2 packet, IEEEAddress sender) throws IOException {
+        // Validate DH_GROUP_LIST
+        if (!dhGroupList.equals(packet.getParameter(HipParameter.DH_GROUP_LIST))) {
+            System.out.println("Group DH list not equal");
+            return false;
+        }
+
+        HipHipMac3 hipMac = (HipHipMac3)packet.getParameter(HipParameter.HIP_MAC_3);
+        if (hipMac == null) {
+            System.out.println("Mac not found");
+            return false;
+        }
+        System.out.println("R2 CMAC verified: " + packet.verifyCmac(remoteIntegrityKey));
+        
         // Check the DH_GROUP_LIST, extract keying material,
         // cancel or restart handshake if DH_GROUP_LIST doesn't match
-        return false;
+        return true;
     }
 
     private boolean generateKeysFromPublicKey(ECPublicKeyImpl publicKey, boolean initiator, byte[] senderHit, byte[] receiverHit, byte[] randomI) {
@@ -289,13 +311,15 @@ public class HipDexConnection {
           
             keyAgreement.init(privateKey);
             keyAgreement.generateSecret(pubKey, 0, pubKey.length, secret, 0);
+            System.out.println("Generated ECDH secret: " + HipDexUtils.byteArrayToString(secret));
+
             HipDexKeyUtil keyUtil = new HipDexKeyUtil(16, 16);
             if (initiator) {
                 keyUtil.generateKeys(receiverHit, senderHit, randomI, secret);
                 localEncryptionKey = keyUtil.getInitiatorEncryptionKey();
                 localIntegrityKey = keyUtil.getInitiatorIntegrityKey();
                 remoteEncryptionKey = keyUtil.getResponderEncryptionKey();
-                remoteIntegrityKey = keyUtil.getInitiatorIntegrityKey();
+                remoteIntegrityKey = keyUtil.getResponderIntegrityKey();
             } else {
                 keyUtil.generateKeys(senderHit, receiverHit, randomI, secret);
                 localEncryptionKey = keyUtil.getResponderEncryptionKey();

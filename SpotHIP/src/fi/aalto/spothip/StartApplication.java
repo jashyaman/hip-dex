@@ -43,20 +43,19 @@ public class StartApplication extends MIDlet {
 
         byte[] remoteHit = new byte[] {
             0x20, 0x01, 0x00, 0x15,
-            0x03, (byte)0xf5, (byte)0xb1, 0x5c,
-            (byte)0xe8, 0x60, (byte)0x89, (byte)0xda,
-            (byte)0xdb, 0x07, 0x59, (byte)0xc6
+            (byte)0xd1, (byte)0xcd, (byte)0xfd, (byte)0xd9,
+            (byte)0x91, (byte)0xaf, (byte)0x3b, (byte)0xd0,
+            (byte)0xd2, (byte)0xa3, (byte)0x75, (byte)0x73
         };
 
-        
+        /*
         HipDexEngine server = new HipDexEngine(true);
         try { server.start(); }
         catch (Exception e) { e.printStackTrace(); }
-        /*
+        */
         HipDexEngine client = new HipDexEngine(false);
         try { client.start(); client.connectToHit(remoteHit); }
-        catch (Exception e) { e.printStackTrace(); }*/
-        
+        catch (Exception e) { e.printStackTrace(); }
     }
 
     protected void pauseApp() {

@@ -85,10 +85,7 @@ public abstract class HipPacket {
         hipParameters.addElement(parameter);
     }
 
-    public void recalculateCmac(byte[] cmacKey) {
-        HipHipMac3 hipMac = (HipHipMac3)getParameter(HipParameter.HIP_MAC_3);
-        if (hipMac == null) return;
-
+    private byte[] calculateCmac(byte[] cmacKey) {
         int parametersLength = 0;
         for (int i=0; i<hipParameters.size(); i++) {
             HipParameter param = (HipParameter)hipParameters.elementAt(i);
@@ -106,10 +103,9 @@ public abstract class HipPacket {
         AesCmac aesCmac = null;
          try {
             SecretKeySpec keySpec = new SecretKeySpec(cmacKey, 0, cmacKey.length, "AES");
-            
             aesCmac = new AesCmac();
             aesCmac.init(keySpec);
-        } catch (Exception e) { return; }
+        } catch (Exception e) { return null; }
         aesCmac.updateByte(nextHeader);
         aesCmac.updateByte((byte) ((HIP_HEADER_LENGTH+parametersLength-8)/8));
         aesCmac.updateByte(packetType);
@@ -123,7 +119,22 @@ public abstract class HipPacket {
                 continue;
             aesCmac.updateBlock(param.getBytes());
         }
-        byte[] cmac = aesCmac.doFinal();
+        return aesCmac.doFinal();
+    }
+
+    public boolean verifyCmac(byte[] cmacKey) {
+        HipHipMac3 hipMac = (HipHipMac3)getParameter(HipParameter.HIP_MAC_3);
+        if (hipMac == null) return false;
+
+        byte[] cmac = calculateCmac(cmacKey);
+        return com.sun.squawk.util.Arrays.equals(hipMac.getContents(), cmac);
+   }
+
+    public void recalculateCmac(byte[] cmacKey) {
+        HipHipMac3 hipMac = (HipHipMac3)getParameter(HipParameter.HIP_MAC_3);
+        if (hipMac == null) return;
+
+        byte[] cmac = calculateCmac(cmacKey);
         hipMac.setCmac(cmac);
    }
 

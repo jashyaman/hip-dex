@@ -43,12 +43,20 @@ public class HipDhGroupList extends HipParameter {
         list = dhGroupList;
     }
 
+    public boolean equals(Object object) {
+        if (object instanceof HipDhGroupList)
+            return equals((HipDhGroupList)object);
+        return false;
+    }
+
     public boolean equals(HipDhGroupList other) {
-        if (list.length != other.list.length)
+        if (list.length != other.list.length) {
             return false;
+        }
         for (int i=0; i<list.length; i++) {
-            if (list[i] != other.list[i])
+            if (list[i] != other.list[i]) {
                 return false;
+            }
         }
         return true;
     }
