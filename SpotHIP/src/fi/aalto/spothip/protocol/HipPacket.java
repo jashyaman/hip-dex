@@ -155,7 +155,6 @@ public abstract class HipPacket {
             // RFC5201-bis Section 5.2.1. TLV Format
             int Length = param.getContentLength();
             parametersLength += 11 + Length - (Length + 3) % 8;
-            System.out.println("parameters length " + parametersLength);
         }
         if (parametersLength > 2008) {
             // TODO: Too large parameters length, should fail
@@ -178,7 +177,6 @@ public abstract class HipPacket {
         for (int i=0; i<hipParameters.size(); i++) {
             HipParameter param = (HipParameter)hipParameters.elementAt(i);
             byte[] paramBytes = param.getBytes();
-            System.out.println("parameter bytes " + paramBytes.length);
 
             System.arraycopy(paramBytes, 0, ret, currentIdx, paramBytes.length);
             currentIdx += paramBytes.length;

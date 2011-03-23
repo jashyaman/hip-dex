@@ -52,10 +52,11 @@ public abstract class HipParameter {
         byte[] contents = getContents();
         byte[] padding = getPadding();
         if (padding == null) {
-            if (contents.length%8 == 0)
+            int contentLength = 4+contents.length;
+            if (contentLength%8 == 0)
                 padding = new byte[0];
             else
-                padding = new byte[8-(4+contents.length)%8];
+                padding = new byte[8-(contentLength)%8];
         }
         
         byte[] data = new byte[4+contents.length+padding.length];
